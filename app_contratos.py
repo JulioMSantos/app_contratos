@@ -176,7 +176,7 @@ def gerar_fluxograma(etapa_destaque=None):
                     c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='#FFD700', penwidth='3', fontname='Helvetica-Bold', fontsize='18')
                 else:
                     # Resto = Branco padrão
-                    c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='white', fontname='Helvetica', fontsize='10')
+                    c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='white', fontname='Helvetica', fontsize='18')
 
     # Traça as setas
     for conexao in conexoes:
