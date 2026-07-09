@@ -173,7 +173,7 @@ def gerar_fluxograma(etapa_destaque=None):
                 # Regras de Destaque
                 if etapa_destaque and id_caixa == etapa_destaque:
                     # Projeto atual = Amarelo Destaque
-                    c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='#FFD700', penwidth='3', fontname='Helvetica-Bold', fontsize='18')
+                    c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='#FFD700', penwidth='3', fontname='Helvetica-Bold', fontsize='24')
                 else:
                     # Resto = Branco padrão
                     c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='white', fontname='Helvetica', fontsize='8')
