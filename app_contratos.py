@@ -5,32 +5,49 @@ import graphviz
 st.set_page_config(layout="wide")
 
 # ==========================================
-# O SEGREDO: CSS para quebrar o bloqueio do Streamlit
-# Isso trava o gráfico em uma altura gigante (900px) e impede que ele seja encolhido.
+# 1. HACK DE CSS: Quebra o bloqueio do Streamlit e cria o zoom infinito
 # ==========================================
 st.markdown("""
     <style>
         [data-testid="stGraphVizChart"] {
-            overflow: auto; /* Cria barras de rolagem nativas */
+            overflow: auto; 
         }
         [data-testid="stGraphVizChart"] > svg {
             max-width: none !important; 
             width: auto !important;
-            height: 900px !important; /* Trava o zoom em um tamanho bem grande e nítido */
+            height: 900px !important; 
         }
     </style>
 """, unsafe_allow_html=True)
 
+# ==========================================
+# 2. CONEXÃO COM O GOOGLE PLANILHAS
+# ==========================================
+# Substitua o texto abaixo pelo link gerado na sua planilha (terminado em .csv)
+url_google_sheets = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTUujZ9Hbv7-UxTj3hchSzZH0rqU23F0-IV04MjX0bPNwgpukTLAld2_kwcDULa5V4afZ9QzmlpcED6/pub?output=csv"
 
-# 1. Base de Dados
-dados = {
-    'Registro': ['PRJ-001', 'PRJ-002', 'PRJ-003'],
-    'Titulo': ['Sensor de Gás', 'Parceria Petrobras', 'Acordo CMPC'],
-    'Etapa_Atual': ['N_J20_2_1', 'N_PI18_2_1', 'N_A15_1'] 
-}
-df = pd.DataFrame(dados)
+try:
+    df_bruto = pd.read_csv(url_google_sheets)
+    
+    # Renomeia as colunas da sua planilha para o padrão do nosso código
+    df = df_bruto.rename(columns={
+        'Registro Portal de Projetos': 'Registro',
+        'Projeto/Título': 'Titulo',
+        'Etapa do processo': 'Etapa_Atual' # <- COLOQUE O NOME EXATO DA SUA COLUNA AQUI
+    })
+    
+    # Força as colunas a serem texto para a busca não dar erro com números puros
+    df['Registro'] = df['Registro'].astype(str)
+    df['Titulo'] = df['Titulo'].astype(str)
+    df['Etapa_Atual'] = df['Etapa_Atual'].astype(str)
 
-# 2. Dicionário de Textos
+except Exception as e:
+    st.warning("Planilha ainda não conectada ou erro de leitura. Mostrando fluxograma padrão.")
+    df = pd.DataFrame(columns=['Registro', 'Titulo', 'Etapa_Atual'])
+
+# ==========================================
+# 3. DICIONÁRIOS E MAPEAMENTOS DO FLUXOGRAMA
+# ==========================================
 textos = {
     # COORDENADOR
     'N_INICIO': 'Início',
@@ -103,7 +120,6 @@ textos = {
     'N_O27': '27. Tramitar ao NAP (PRA)'
 }
 
-# 3. Distribuição das Etapas por Setor
 setores = {
     'NPI': ['N_PI16_2_1', 'N_PI18_2_1', 'N_PI19_2_1'],
     'Juridico': ['N_J_D1', 'N_J15_2_1', 'N_J15_2_2', 'N_J_D2', 'N_J_D3', 'N_J20_2_1', 'N_J21_2', 'N_J_D4'],
@@ -113,7 +129,6 @@ setores = {
     'Outros': ['N_O18_1', 'N_O19_1', 'N_O24', 'N_O25', 'N_O26', 'N_O27']
 }
 
-# 4. Mapeamento das Setas
 conexoes = [
     ('N_INICIO', 'N_C1'), ('N_C1', 'N_C_D1'),
     ('N_C_D1', 'N_C2', 'Sim'), ('N_C_D1', 'N_C3', 'Não'),
@@ -147,9 +162,11 @@ conexoes = [
     ('N_A23_1', 'N_O24'), ('N_O24', 'N_O25'), ('N_O25', 'N_O26'), ('N_O26', 'N_O27')
 ]
 
+# ==========================================
+# 4. FUNÇÃO GERADORA DO FLUXOGRAMA
+# ==========================================
 def gerar_fluxograma(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Completo')
-    # Aumentei o ranksep para dar bastante respiro entre os blocos
     dot.attr(rankdir='LR', compound='true', splines='ortho', nodesep='0.6', ranksep='1.0')
     
     for nome_setor, lista_ids in setores.items():
@@ -165,7 +182,6 @@ def gerar_fluxograma(etapa_destaque=None):
                 elif texto_real in ['Início', 'FIM']:
                     formato = 'circle'
                 
-                # Fontes ajustadas para 14 (grandes e legíveis)
                 if etapa_destaque and id_caixa == etapa_destaque:
                     c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='#FFD700', penwidth='3', fontname='Helvetica-Bold', fontsize='14')
                 else:
@@ -176,22 +192,26 @@ def gerar_fluxograma(etapa_destaque=None):
         destino = conexao[1]
         
         if len(conexao) == 3:
-            # Voltei a usar "label" centralizado com espaços em branco para ficar perfeito
-            dot.edge(origem, destino, label=f"  {conexao[2]}  ", fontsize='14', fontname='Helvetica-Bold', fontcolor='#0055A4', color='#666666')
+            dot.edge(origem, destino, taillabel=conexao[2], labeldistance='2.5', labelangle='0', fontsize='14', fontname='Helvetica-Bold', fontcolor='#0055A4', color='#666666')
         else:
             dot.edge(origem, destino, color='#666666')
 
     return dot
 
-# 5. Interface
+# ==========================================
+# 5. INTERFACE DO APLICATIVO
+# ==========================================
 st.title("Sistema Integra - Rastreamento de Contratos")
 busca = st.text_input("Buscar Projeto (Ex: PRJ-001)")
 
 if busca:
-    projeto = df[df['Registro'].str.contains(busca, case=False)]
+    # Filtra procurando na coluna de Registro ou na coluna de Título
+    projeto = df[(df['Registro'].str.contains(busca, case=False, na=False)) | 
+                 (df['Titulo'].str.contains(busca, case=False, na=False))]
+                 
     if not projeto.empty:
         id_etapa = projeto.iloc[0]['Etapa_Atual']
-        nome_etapa = textos.get(id_etapa, "Desconhecida")
+        nome_etapa = textos.get(id_etapa, id_etapa)
         st.success(f"**Projeto Encontrado! Etapa Atual:** {nome_etapa}")
         
         grafico = gerar_fluxograma(etapa_destaque=id_etapa)
