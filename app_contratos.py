@@ -2,68 +2,97 @@ import streamlit as st
 import pandas as pd
 import graphviz
 
-# 1. Simulando a sua planilha de controle (no futuro, você substitui por pd.read_excel('sua_planilha.xlsx'))
+# Configura a página para ficar mais larga (ideal para fluxogramas grandes)
+st.set_page_config(layout="wide")
+
+# 1. Base de Dados Simulada
 dados = {
     'Registro': ['PRJ-001', 'PRJ-002', 'PRJ-003'],
-    'Titulo': ['Desenvolvimento Sensor de Gás Automatizado', 'Parceria Petrobras e CMPC', 'Plano de Trabalho Fundep'],
-    'Etapa_Atual': ['NPI', 'Formalização', 'Coordenador(a)']
+    'Titulo': ['Desenvolvimento Sensor de Gás', 'Parceria Petrobras', 'Plano de Trabalho'],
+    'Etapa_Atual': ['Valoração NPV', 'Análise Jurídica', 'Abertura de Processo']
 }
 df = pd.DataFrame(dados)
 
-# Definindo a ordem oficial das etapas do seu PDF
-ordem_etapas = [
-    'Outros', 'NAP', 'NPV', 'Coordenador(a)', 
-    'Juridico', 'NPI', 'Formalização', 'Vigência', 'Pós-Vigência'
+# 2. Mapeamento das Etapas e Setores
+# Aqui nós definimos quais caixas pertencem a quais raias (departamentos)
+setores = {
+    'NPI': ['Análise de PI'],
+    'Jurídico': ['Análise Jurídica', 'Assinatura do Contrato'],
+    'Coordenador(a)': ['Abertura de Processo', 'Ajustes da Proposta'],
+    'NPV': ['Valoração NPV', 'Negociação'],
+    'NAP': ['Análise NAP', 'Tramitação Final'],
+    'Outros': ['Fim']
+}
+
+# Ordem cronológica lógica para calcular o que é passado, presente e futuro
+ordem_cronologica = [
+    'Abertura de Processo', 'Análise NAP', 'Valoração NPV', 
+    'Negociação', 'Análise de PI', 'Análise Jurídica', 
+    'Ajustes da Proposta', 'Assinatura do Contrato', 'Tramitação Final', 'Fim'
 ]
 
-# 2. Interface do Streamlit
-st.title("Rastreamento de Etapas de Contratos")
-st.write("Digite o registro ou título do projeto para visualizar o status.")
+# 3. Função para desenhar o fluxograma
+def gerar_fluxograma(etapa_destaque=None):
+    dot = graphviz.Digraph(comment='Fluxograma com Raias')
+    dot.attr(rankdir='LR', compound='true', splines='ortho') # 'ortho' deixa as linhas retas
+    
+    # Descobre o índice da etapa atual para a lógica de cores
+    indice_atual = -1
+    if etapa_destaque and etapa_destaque in ordem_cronologica:
+        indice_atual = ordem_cronologica.index(etapa_destaque)
 
-# Barra de busca
+    # Criação das Raias (Clusters)
+    for nome_setor, etapas_do_setor in setores.items():
+        # O nome do cluster no graphviz PRECISA começar com "cluster_"
+        with dot.subgraph(name=f'cluster_{nome_setor}') as c:
+            c.attr(label=nome_setor, style='filled', color='#f4f4f8', fontname='Helvetica', fontsize='14')
+            
+            for etapa in etapas_do_setor:
+                indice_etapa = ordem_cronologica.index(etapa) if etapa in ordem_cronologica else 999
+                
+                if etapa_destaque:
+                    # Lógica de Cores quando um projeto é pesquisado
+                    if indice_etapa < indice_atual:
+                        c.node(etapa, etapa, style='filled', fillcolor='#D3D3D3', color='gray', shape='box') # Concluído (Cinza)
+                    elif indice_etapa == indice_atual:
+                        c.node(etapa, etapa, style='filled', fillcolor='#FFD700', shape='box', penwidth='2') # Atual (Amarelo)
+                    else:
+                        c.node(etapa, etapa, style='dashed', fillcolor='white', color='gray', shape='box') # Futuro (Tracejado)
+                else:
+                    # Lógica de Cores Padrão (Sem pesquisa)
+                    c.node(etapa, etapa, style='filled', fillcolor='white', shape='box')
+
+    # Conectando as setas (fazendo o caminho do fluxograma cruzar os setores)
+    for i in range(len(ordem_cronologica) - 1):
+        dot.edge(ordem_cronologica[i], ordem_cronologica[i+1])
+
+    return dot
+
+# 4. Interface do Streamlit
+st.title("Rastreamento de Etapas de Contratos")
+st.write("Visão geral do processo. Pesquise um projeto para destacar o seu andamento.")
+
 busca = st.text_input("Buscar Projeto (Ex: PRJ-001 ou Sensor de Gás)")
 
+# Lógica de exibição
 if busca:
-    # Filtra a planilha com base na busca
     projeto_encontrado = df[(df['Registro'].str.contains(busca, case=False)) | 
                             (df['Titulo'].str.contains(busca, case=False))]
     
     if not projeto_encontrado.empty:
-        # Pega as informações do projeto
         titulo = projeto_encontrado.iloc[0]['Titulo']
         etapa_atual = projeto_encontrado.iloc[0]['Etapa_Atual']
         
-        st.subheader(f"Projeto: {titulo}")
-        st.write(f"**Etapa Atual:** {etapa_atual}")
+        st.success(f"**Projeto Encontrado:** {titulo} | **Etapa Atual:** {etapa_atual}")
         
-        # 3. Construindo o Fluxograma Visual
-        dot = graphviz.Digraph(comment='Fluxograma do Contrato')
-        dot.attr(rankdir='LR') # LR = Left to Right (Esquerda para Direita). Use 'TB' para Top to Bottom.
-        
-        # Descobre o índice (número) da etapa atual para saber o que já passou e o que falta
-        try:
-            indice_atual = ordem_etapas.index(etapa_atual)
-        except ValueError:
-            indice_atual = -1
-            
-        # Criando as caixas do fluxograma dinamicamente
-        for i, etapa in enumerate(ordem_etapas):
-            if i < indice_atual:
-                # Etapas já concluídas: cinza claro
-                dot.node(etapa, etapa, style='filled', fillcolor='#E0E0E0', shape='box', color='gray')
-            elif i == indice_atual:
-                # Etapa atual: destacada em amarelo/laranja
-                dot.node(etapa, etapa, style='filled', fillcolor='#FFD700', shape='box', penwidth='2')
-            else:
-                # Etapas futuras: branco com borda tracejada
-                dot.node(etapa, etapa, style='dashed', shape='box', color='#888888')
-                
-            # Conectando as setas (da etapa atual para a próxima)
-            if i > 0:
-                dot.edge(ordem_etapas[i-1], etapa)
-
-        # Renderiza o fluxograma na tela
-        st.graphviz_chart(dot)
-        
+        # Gera o gráfico com o destaque
+        grafico = gerar_fluxograma(etapa_destaque=etapa_atual)
+        st.graphviz_chart(grafico, use_container_width=True)
     else:
-        st.warning("Projeto não encontrado. Verifique o termo buscado.")
+        st.warning("Projeto não encontrado. Mostrando fluxograma padrão.")
+        grafico = gerar_fluxograma()
+        st.graphviz_chart(grafico, use_container_width=True)
+else:
+    # Se a barra de busca estiver vazia, exibe o fluxograma limpo
+    grafico = gerar_fluxograma()
+    st.graphviz_chart(grafico, use_container_width=True)
