@@ -151,7 +151,8 @@ conexoes = [
 
 def gerar_fluxograma(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Completo')
-    dot.attr(rankdir='LR', compound='true', splines='ortho', nodesep='0.5', ranksep='0.7')
+    # Aumentei levemente o nodesep/ranksep para garantir que caixas com fontes maiores não fiquem amontoadas
+    dot.attr(rankdir='LR', compound='true', splines='ortho', nodesep='0.6', ranksep='0.8')
     
     for nome_setor, lista_ids in setores.items():
         with dot.subgraph(name=f'cluster_{nome_setor}') as c:
@@ -167,19 +168,20 @@ def gerar_fluxograma(etapa_destaque=None):
                 elif texto_real in ['Início', 'FIM']:
                     formato = 'circle'
                 
-                # Regras de Destaque com Fonte Ajustada (12)
+                # Regras de Destaque com Fonte Aumentada (14)
                 if etapa_destaque and id_caixa == etapa_destaque:
-                    c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='#FFD700', penwidth='3', fontname='Helvetica-Bold', fontsize='12')
+                    c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='#FFD700', penwidth='3', fontname='Helvetica-Bold', fontsize='14')
                 else:
-                    c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='white', fontname='Helvetica', fontsize='12')
+                    c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='white', fontname='Helvetica', fontsize='14')
 
-    # Traça as setas com as legendas próximas da origem (taillabel)
+    # Traça as setas com as legendas afastadas (labeldistance) e maiores
     for conexao in conexoes:
         origem = conexao[0]
         destino = conexao[1]
         
         if len(conexao) == 3:
-            dot.edge(origem, destino, taillabel=f'  {conexao[2]}  ', fontsize='12', fontname='Helvetica-Bold', fontcolor='#0055A4', color='#666666')
+            # labeldistance='2.5' empurra o texto para longe da linha do losango para não sobrepor
+            dot.edge(origem, destino, taillabel=conexao[2], labeldistance='2.5', labelangle='0', fontsize='14', fontname='Helvetica-Bold', fontcolor='#0055A4', color='#666666')
         else:
             dot.edge(origem, destino, color='#666666')
 
