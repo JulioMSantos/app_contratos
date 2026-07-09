@@ -9,12 +9,10 @@ dados = {
     'Registro': ['PRJ-001', 'PRJ-002', 'PRJ-003'],
     'Titulo': ['Sensor de Gás', 'Parceria Petrobras', 'Acordo CMPC'],
     'Etapa_Atual': ['N_J20_2_1', 'N_PI18_2_1', 'N_A15_1'] 
-    # Agora a planilha usa o ID da etapa (veja o dicionario abaixo)
 }
 df = pd.DataFrame(dados)
 
-# 2. Dicionário de Textos (ID -> Texto que aparece na tela)
-# Os \n servem para quebrar a linha e a caixa não ficar larga demais
+# 2. Dicionário de Textos
 textos = {
     # COORDENADOR
     'N_INICIO': 'Início',
@@ -153,12 +151,11 @@ conexoes = [
 
 def gerar_fluxograma(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Completo')
-    # Configurações para lidar com um gráfico gigante (nodesep e ranksep espaçam as caixas)
     dot.attr(rankdir='LR', compound='true', splines='ortho', nodesep='0.5', ranksep='0.7')
     
     for nome_setor, lista_ids in setores.items():
         with dot.subgraph(name=f'cluster_{nome_setor}') as c:
-            c.attr(label=nome_setor, style='filled', color='#F4F6F9', fontname='Helvetica-Bold', fontsize='14', labelloc='t', labeljust='l', margin='20')
+            c.attr(label=nome_setor, style='filled', color='#F4F6F9', fontname='Helvetica-Bold', fontsize='18', labelloc='t', labeljust='l', margin='20')
             
             for id_caixa in lista_ids:
                 texto_real = textos.get(id_caixa, id_caixa)
@@ -170,21 +167,19 @@ def gerar_fluxograma(etapa_destaque=None):
                 elif texto_real in ['Início', 'FIM']:
                     formato = 'circle'
                 
-                # Regras de Destaque
+                # Regras de Destaque com Fonte Ajustada (12)
                 if etapa_destaque and id_caixa == etapa_destaque:
-                    # Projeto atual = Amarelo Destaque
-                    c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='#FFD700', penwidth='3', fontname='Helvetica-Bold', fontsize='18')
+                    c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='#FFD700', penwidth='3', fontname='Helvetica-Bold', fontsize='12')
                 else:
-                    # Resto = Branco padrão
-                    c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='white', fontname='Helvetica', fontsize='8')
+                    c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='white', fontname='Helvetica', fontsize='12')
 
-    # Traça as setas
+    # Traça as setas com as legendas próximas da origem (taillabel)
     for conexao in conexoes:
         origem = conexao[0]
         destino = conexao[1]
         
         if len(conexao) == 3:
-            dot.edge(origem, destino, label=conexao[2], fontsize='12', fontname='Helvetica-Bold', fontcolor='#0055A4', color='#666666')
+            dot.edge(origem, destino, taillabel=f'  {conexao[2]}  ', fontsize='12', fontname='Helvetica-Bold', fontcolor='#0055A4', color='#666666')
         else:
             dot.edge(origem, destino, color='#666666')
 
@@ -202,7 +197,7 @@ if busca:
         st.success(f"**Projeto Encontrado! Etapa Atual:** {nome_etapa}")
         
         grafico = gerar_fluxograma(etapa_destaque=id_etapa)
-        # O False permite que você dê scroll horizontal no gráfico enorme sem ele ficar espremido
+        # O False previne o achatamento da imagem e ativa o scroll/zoom
         st.graphviz_chart(grafico, use_container_width=False) 
     else:
         st.warning("Projeto não encontrado.")
