@@ -173,7 +173,7 @@ def gerar_fluxograma(etapa_destaque=None):
                 # Regras de Destaque
                 if etapa_destaque and id_caixa == etapa_destaque:
                     # Projeto atual = Amarelo Destaque
-                    c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='#FFD700', penwidth='3', fontname='Helvetica-Bold', fontsize='24')
+                    c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='#FFD700', penwidth='3', fontname='Helvetica-Bold', fontsize='18')
                 else:
                     # Resto = Branco padrão
                     c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='white', fontname='Helvetica', fontsize='8')
@@ -184,7 +184,7 @@ def gerar_fluxograma(etapa_destaque=None):
         destino = conexao[1]
         
         if len(conexao) == 3:
-            dot.edge(origem, destino, label=conexao[2], fontsize='9', fontname='Helvetica-Bold', fontcolor='#0055A4', color='#666666')
+            dot.edge(origem, destino, label=conexao[2], fontsize='12', fontname='Helvetica-Bold', fontcolor='#0055A4', color='#666666')
         else:
             dot.edge(origem, destino, color='#666666')
 
