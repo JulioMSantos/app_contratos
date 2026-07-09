@@ -4,6 +4,24 @@ import graphviz
 
 st.set_page_config(layout="wide")
 
+# ==========================================
+# O SEGREDO: CSS para quebrar o bloqueio do Streamlit
+# Isso trava o gráfico em uma altura gigante (900px) e impede que ele seja encolhido.
+# ==========================================
+st.markdown("""
+    <style>
+        [data-testid="stGraphVizChart"] {
+            overflow: auto; /* Cria barras de rolagem nativas */
+        }
+        [data-testid="stGraphVizChart"] > svg {
+            max-width: none !important; 
+            width: auto !important;
+            height: 900px !important; /* Trava o zoom em um tamanho bem grande e nítido */
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+
 # 1. Base de Dados
 dados = {
     'Registro': ['PRJ-001', 'PRJ-002', 'PRJ-003'],
@@ -95,52 +113,33 @@ setores = {
     'Outros': ['N_O18_1', 'N_O19_1', 'N_O24', 'N_O25', 'N_O26', 'N_O27']
 }
 
-# 4. Mapeamento das Setas Exatas (De onde -> Para onde)
+# 4. Mapeamento das Setas
 conexoes = [
-    # Início do Fluxo
     ('N_INICIO', 'N_C1'), ('N_C1', 'N_C_D1'),
     ('N_C_D1', 'N_C2', 'Sim'), ('N_C_D1', 'N_C3', 'Não'),
     ('N_C2', 'N_C3'), ('N_C3', 'N_V4'), ('N_V4', 'N_V5'),
     ('N_V5', 'N_V_D1'),
-    
-    # Decisão PI (NPV para Coord)
     ('N_V_D1', 'N_C6', 'Sim'), ('N_C6', 'N_V7'),
-    
-    # Caminho Negociação (NPV)
     ('N_V_D1', 'N_V_D2', 'Não'),
     ('N_V_D2', 'N_V10_2_2', 'Sim'), ('N_V_D2', 'N_V_SEGUIR', 'Não'),
     ('N_V10_2_2', 'N_V_D3'), ('N_V_SEGUIR', 'N_V_D3'),
     ('N_V_D3', 'N_V10', 'Sim'), ('N_V10', 'N_V11'),
     ('N_V_D3', 'N_V7', 'Não'), ('N_V11', 'N_A8'), ('N_V7', 'N_A8'),
-    
-    # Caminho NAP (Enquadramento)
     ('N_A8', 'N_A_D1'), ('N_A_D1', 'N_A_SEGUIR', 'Não'), ('N_A_SEGUIR', 'N_FIM'),
     ('N_A_D1', 'N_A9', 'Sim'), ('N_A9', 'N_V12'), ('N_V12', 'N_C13'),
     ('N_C13', 'N_V14_1'), ('N_V14_1', 'N_C15_3'), ('N_C15_3', 'N_V14_2'),
-    
-    # Bifurcação Jurídico e NAP
     ('N_V14_2', 'N_J_D1'), ('N_V14_2', 'N_A15_1'),
-    
-    # ------------------ RAMO JURÍDICO E NPI ------------------
     ('N_J_D1', 'N_J15_2_1', 'Sim'), ('N_J_D1', 'N_J15_2_2', 'Não'),
     ('N_J15_2_1', 'N_J_D2'), ('N_J15_2_2', 'N_J_D2'),
-    
-    # Divisão de PI (NPI)
     ('N_J_D2', 'N_PI16_2_1', 'Sim'),
     ('N_PI16_2_1', 'N_C17_2_1'), ('N_C17_2_1', 'N_PI18_2_1'), 
     ('N_PI18_2_1', 'N_PI19_2_1'), ('N_PI19_2_1', 'N_J20_2_1'),
-    
-    # Questões de TT
     ('N_J_D2', 'N_J_D3', 'Não'),
     ('N_J_D3', 'N_J20_2_1', 'Não'), ('N_J_D3', 'N_V_D4', 'Sim'),
-    
     ('N_V_D4', 'N_V16_2_3', 'Diferentes'), ('N_V16_2_3', 'N_V20_2_2'), ('N_V20_2_2', 'N_J20_2_1'),
     ('N_V_D4', 'N_V16_2_2', 'Valoração'), ('N_V16_2_2', 'N_V17_2_2'), ('N_V17_2_2', 'N_V18_2_2'), 
     ('N_V18_2_2', 'N_V19_2_2'), ('N_V19_2_2', 'N_J20_2_1'),
-    
     ('N_J20_2_1', 'N_J21_2'), ('N_J21_2', 'N_J_D4'),
-    
-    # ------------------ RAMO NAP E OUTROS ------------------
     ('N_A15_1', 'N_A17_3'), ('N_A17_3', 'N_O18_1'), ('N_O18_1', 'N_O19_1'),
     ('N_O19_1', 'N_A_D2'),
     ('N_A_D2', 'N_A20_3', 'Sim'), ('N_A20_3', 'N_C15_3'),
@@ -148,11 +147,10 @@ conexoes = [
     ('N_A23_1', 'N_O24'), ('N_O24', 'N_O25'), ('N_O25', 'N_O26'), ('N_O26', 'N_O27')
 ]
 
-
 def gerar_fluxograma(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Completo')
-    # Aumentei levemente o nodesep/ranksep para garantir que caixas com fontes maiores não fiquem amontoadas
-    dot.attr(rankdir='LR', compound='true', splines='ortho', nodesep='0.6', ranksep='0.8')
+    # Aumentei o ranksep para dar bastante respiro entre os blocos
+    dot.attr(rankdir='LR', compound='true', splines='ortho', nodesep='0.6', ranksep='1.0')
     
     for nome_setor, lista_ids in setores.items():
         with dot.subgraph(name=f'cluster_{nome_setor}') as c:
@@ -161,33 +159,31 @@ def gerar_fluxograma(etapa_destaque=None):
             for id_caixa in lista_ids:
                 texto_real = textos.get(id_caixa, id_caixa)
                 
-                # Regras de Formato (Losango para perguntas)
                 formato = 'box'
                 if '?' in texto_real:
                     formato = 'diamond'
                 elif texto_real in ['Início', 'FIM']:
                     formato = 'circle'
                 
-                # Regras de Destaque com Fonte Aumentada (14)
+                # Fontes ajustadas para 14 (grandes e legíveis)
                 if etapa_destaque and id_caixa == etapa_destaque:
                     c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='#FFD700', penwidth='3', fontname='Helvetica-Bold', fontsize='14')
                 else:
                     c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='white', fontname='Helvetica', fontsize='14')
 
-    # Traça as setas com as legendas afastadas (labeldistance) e maiores
     for conexao in conexoes:
         origem = conexao[0]
         destino = conexao[1]
         
         if len(conexao) == 3:
-            # labeldistance='2.5' empurra o texto para longe da linha do losango para não sobrepor
-            dot.edge(origem, destino, taillabel=conexao[2], labeldistance='2.5', labelangle='0', fontsize='14', fontname='Helvetica-Bold', fontcolor='#0055A4', color='#666666')
+            # Voltei a usar "label" centralizado com espaços em branco para ficar perfeito
+            dot.edge(origem, destino, label=f"  {conexao[2]}  ", fontsize='14', fontname='Helvetica-Bold', fontcolor='#0055A4', color='#666666')
         else:
             dot.edge(origem, destino, color='#666666')
 
     return dot
 
-# 5. Interface Streamlit
+# 5. Interface
 st.title("Sistema Integra - Rastreamento de Contratos")
 busca = st.text_input("Buscar Projeto (Ex: PRJ-001)")
 
@@ -199,7 +195,6 @@ if busca:
         st.success(f"**Projeto Encontrado! Etapa Atual:** {nome_etapa}")
         
         grafico = gerar_fluxograma(etapa_destaque=id_etapa)
-        # O False previne o achatamento da imagem e ativa o scroll/zoom
         st.graphviz_chart(grafico, use_container_width=False) 
     else:
         st.warning("Projeto não encontrado.")
