@@ -17,7 +17,6 @@ st.markdown("""
             box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
         }
         [data-testid="stGraphVizChart"] > svg {
-            /* Tamanho inteligente: não encolhe para estragar a fonte, mas não estica além do necessário */
             width: max-content !important; 
             min-width: 100% !important;
             height: auto !important;
@@ -163,12 +162,11 @@ conexoes = [
 ]
 
 # ==========================================
-# 5. FUNÇÃO GERADORA DO FLUXOGRAMA (COMPRIMIDO)
+# 5. FUNÇÃO GERADORA DO FLUXOGRAMA (COMPRIMIDO E LEGÍVEL)
 # ==========================================
 def gerar_fluxograma(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Completo')
     
-    # RANKSEP e NODESEP reduzidos drasticamente para juntar as caixas
     dot.attr(rankdir='LR', splines='ortho', nodesep='0.5', ranksep='0.4')
     
     for nome_setor, lista_ids in setores.items():
@@ -186,17 +184,18 @@ def gerar_fluxograma(etapa_destaque=None):
             if '?' in texto_real:
                 formato = 'diamond'
             
+            # --- FONTES AUMENTADAS AQUI ---
             if id_caixa == 'N_INICIO':
-                dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#4CAF50', color='#2E7D32', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='16')
+                dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#4CAF50', color='#2E7D32', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='22')
             
             elif id_caixa == 'N_FIM':
-                dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#F44336', color='#C62828', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='16')
+                dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#F44336', color='#C62828', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='22')
             
             elif etapa_destaque and id_caixa == etapa_destaque:
-                dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor='#FFD700', color='#B8860B', penwidth='4', fontname='Helvetica-Bold', fontsize='15')
+                dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor='#FFD700', color='#B8860B', penwidth='4', fontname='Helvetica-Bold', fontsize='20')
             
             else:
-                dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_caixa, color='#78909C', penwidth='2', fontname='Helvetica', fontsize='14')
+                dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_caixa, color='#78909C', penwidth='2', fontname='Helvetica', fontsize='18')
 
     for conexao in conexoes:
         origem = conexao[0]
@@ -204,7 +203,8 @@ def gerar_fluxograma(etapa_destaque=None):
         cor_seta = '#90A4AE'
         
         if len(conexao) == 3:
-            dot.edge(origem, destino, taillabel=conexao[2], labeldistance='2.5', labelangle='0', fontsize='12', fontname='Helvetica-Bold', fontcolor='#1976D2', color=cor_seta, penwidth='1.5')
+            # --- CENTRALIZAÇÃO (label em vez de taillabel) E FONTE MAIOR AQUI ---
+            dot.edge(origem, destino, label=f" {conexao[2]} ", fontsize='16', fontname='Helvetica-Bold', fontcolor='#1976D2', color=cor_seta, penwidth='1.5')
         else:
             dot.edge(origem, destino, color=cor_seta, penwidth='1.5')
 
