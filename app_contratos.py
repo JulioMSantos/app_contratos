@@ -162,13 +162,18 @@ conexoes = [
 ]
 
 # ==========================================
-# 5. FUNÇÃO GERADORA DO FLUXOGRAMA (SUPER FONTES)
+# 5. FUNÇÃO GERADORA DO FLUXOGRAMA (SUPER FONTES E CAIXAS JUSTAS)
 # ==========================================
 def gerar_fluxograma(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Completo')
     
-    # Adicionei uma pequena margem (node_margin) caso ajude no respiro
-    dot.attr(rankdir='LR', splines='ortho', nodesep='0.5', ranksep='0.4')
+    # Reduzi o nodesep também para as caixas ficarem mais pertinho umas das outras
+    dot.attr(rankdir='LR', splines='ortho', nodesep='0.4', ranksep='0.4')
+    
+    # O SEGREDO DO ENCOLHIMENTO: 
+    # margin='0.05' corta a gordura ao redor da letra
+    # width='0' e height='0' removem os tamanhos mínimos impostos pelo sistema
+    dot.attr('node', margin='0.08,0.05', width='0', height='0')
     
     for nome_setor, lista_ids in setores.items():
         cor_caixa = cores_caixas.get(nome_setor, '#FFFFFF')
@@ -185,7 +190,6 @@ def gerar_fluxograma(etapa_destaque=None):
             if '?' in texto_real:
                 formato = 'diamond'
             
-            # --- FONTES MAXIMIZADAS AQUI ---
             if id_caixa == 'N_INICIO':
                 dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#4CAF50', color='#2E7D32', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='32')
             
@@ -196,7 +200,6 @@ def gerar_fluxograma(etapa_destaque=None):
                 dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor='#FFD700', color='#B8860B', penwidth='4', fontname='Helvetica-Bold', fontsize='28')
             
             else:
-                # Fonte base mudou para Bold e 24 para legibilidade extrema
                 dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_caixa, color='#78909C', penwidth='2', fontname='Helvetica-Bold', fontsize='24')
 
     for conexao in conexoes:
@@ -204,7 +207,6 @@ def gerar_fluxograma(etapa_destaque=None):
         destino = conexao[1]
         cor_seta = '#90A4AE'
         
-        # --- SETAS MAIS GROSSAS E TEXTOS MAIORES ---
         if len(conexao) == 3:
             dot.edge(origem, destino, label=f" {conexao[2]} ", fontsize='20', fontname='Helvetica-Bold', fontcolor='#1976D2', color=cor_seta, penwidth='2.0')
         else:
