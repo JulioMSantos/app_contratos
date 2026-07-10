@@ -29,11 +29,15 @@ url_google_sheets = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRXE69ipW9u
 try:
     df_bruto = pd.read_csv(url_google_sheets)
     
+    # --- ADICIONE ESTA LINHA ABAIXO ---
+    st.info(f"Colunas encontradas pelo Python: {df_bruto.columns.tolist()}")
+    # ----------------------------------
+    
     # Renomeia as colunas da sua planilha para o padrão do nosso código
     df = df_bruto.rename(columns={
         'Registro Portal de Projetos': 'Registro',
         'Projeto/Título': 'Titulo',
-        'Etapa do processo': 'Etapa Atual' # <- COLOQUE O NOME EXATO DA SUA COLUNA AQUI
+        'Etapa Atual': 'Etapa_Atual'
     })
     
     # Força as colunas a serem texto para a busca não dar erro com números puros
