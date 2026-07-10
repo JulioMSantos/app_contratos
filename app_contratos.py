@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import graphviz
+import textwrap  # <--- NOVA BIBLIOTECA: Faz a quebra automática de linhas
 
 st.set_page_config(layout="wide")
 
@@ -162,32 +163,35 @@ conexoes = [
 ]
 
 # ==========================================
-# 5. FUNÇÃO GERADORA DO FLUXOGRAMA (SUPER FONTES E CAIXAS JUSTAS)
+# 5. FUNÇÃO GERADORA DO FLUXOGRAMA (ESPREMIDO HORIZONTALMENTE)
 # ==========================================
 def gerar_fluxograma(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Completo')
     
-    # Reduzi o nodesep também para as caixas ficarem mais pertinho umas das outras
-    dot.attr(rankdir='LR', splines='ortho', nodesep='0.4', ranksep='0.4')
+    # Reduzimos ainda mais o espaçamento horizontal (ranksep)
+    dot.attr(rankdir='LR', splines='ortho', nodesep='0.5', ranksep='0.3')
     
-    # O SEGREDO DO ENCOLHIMENTO: 
-    # margin='0.05' corta a gordura ao redor da letra
-    # width='0' e height='0' removem os tamanhos mínimos impostos pelo sistema
+    # Mantém as margens justas
     dot.attr('node', margin='0.08,0.05', width='0', height='0')
     
     for nome_setor, lista_ids in setores.items():
         cor_caixa = cores_caixas.get(nome_setor, '#FFFFFF')
         
         for id_caixa in lista_ids:
-            texto_real = textos.get(id_caixa, id_caixa)
+            # 1. Pegamos o texto e removemos as quebras de linha antigas (manuais)
+            texto_bruto = textos.get(id_caixa, id_caixa).replace('\n', ' ')
+            
+            # 2. O MÁGICO: Limitamos a no máximo 22 caracteres por linha!
+            # Isso força as caixas a crescerem para baixo, encurtando a largura geral.
+            texto_quebrado = textwrap.fill(texto_bruto, width=22)
             
             if id_caixa not in ['N_INICIO', 'N_FIM']:
-                texto_exibicao = f"[{nome_setor.upper()}]\n{texto_real}"
+                texto_exibicao = f"[{nome_setor.upper()}]\n{texto_quebrado}"
             else:
-                texto_exibicao = texto_real
+                texto_exibicao = texto_quebrado
             
             formato = 'box'
-            if '?' in texto_real:
+            if '?' in texto_bruto:
                 formato = 'diamond'
             
             if id_caixa == 'N_INICIO':
@@ -229,7 +233,7 @@ if busca:
         id_etapa = tradutor_etapas.get(etapa_bruta, etapa_bruta)
         nome_etapa = textos.get(id_etapa, etapa_bruta)
         
-        st.success(f"**Projeto Encontrado! Etapa Atual:** {nome_etapa}")
+        st.success(f"**Projeto Encontrado! Etapa Atual:** {nome_etapa.replace(chr(10), ' ')}")
         
         grafico = gerar_fluxograma(etapa_destaque=id_etapa)
         st.graphviz_chart(grafico, use_container_width=False) 
