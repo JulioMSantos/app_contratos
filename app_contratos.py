@@ -24,7 +24,7 @@ st.markdown("""
 # 2. CONEXÃO COM O GOOGLE PLANILHAS
 # ==========================================
 # Substitua o texto abaixo pelo link gerado na sua planilha (terminado em .csv)
-url_google_sheets = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTUujZ9Hbv7-UxTj3hchSzZH0rqU23F0-IV04MjX0bPNwgpukTLAld2_kwcDULa5V4afZ9QzmlpcED6/pub?output=csv"
+url_google_sheets = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRXE69ipW9usXVW5msH5SPVV5CMz5tboAlWg_O-9Zdi4_WGxdB5BmTlXxdd_2OSrW6_S91J66bckSDs/pub?output=csv"
 
 try:
     df_bruto = pd.read_csv(url_google_sheets)
@@ -33,7 +33,7 @@ try:
     df = df_bruto.rename(columns={
         'Registro Portal de Projetos': 'Registro',
         'Projeto/Título': 'Titulo',
-        'Etapa do processo': 'Etapa_Atual' # <- COLOQUE O NOME EXATO DA SUA COLUNA AQUI
+        'Etapa do processo': 'Etapa Atual' # <- COLOQUE O NOME EXATO DA SUA COLUNA AQUI
     })
     
     # Força as colunas a serem texto para a busca não dar erro com números puros
