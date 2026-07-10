@@ -17,7 +17,7 @@ st.markdown("""
             box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
         }
         [data-testid="stGraphVizChart"] > svg {
-            /* Garante que as letras nunca fiquem minúsculas */
+            /* Garante que o gráfico tenha espaço para respirar */
             min-width: 3500px !important; 
             height: auto !important;
         }
@@ -109,24 +109,23 @@ textos = {
     'N_O26': '26. Inserir CADIN (PRA)', 'N_O27': '27. Tramitar ao NAP (PRA)'
 }
 
-# REORGANIZADO PARA O COORDENADOR FICAR NO MEIO DO FLUXOGRAMA
 setores = {
-    'Juridico': ['N_J_D1', 'N_J15_2_1', 'N_J15_2_2', 'N_J_D2', 'N_J_D3', 'N_J20_2_1', 'N_J21_2', 'N_J_D4'],
-    'NPV': ['N_V4', 'N_V5', 'N_V_D1', 'N_V_D2', 'N_V10_2_2', 'N_V_SEGUIR', 'N_V_D3', 'N_V10', 'N_V11', 'N_V7', 'N_V12', 'N_V14_1', 'N_V14_2', 'N_V_D4', 'N_V16_2_3', 'N_V20_2_2', 'N_V16_2_2', 'N_V17_2_2', 'N_V18_2_2', 'N_V19_2_2'],
     'Coordenador(a)': ['N_INICIO', 'N_C1', 'N_C_D1', 'N_C2', 'N_C3', 'N_C6', 'N_C13', 'N_C15_3', 'N_C17_2_1'],
-    'NAP': ['N_A8', 'N_A_D1', 'N_A_SEGUIR', 'N_FIM', 'N_A9', 'N_A15_1', 'N_A17_3', 'N_A_D2', 'N_A20_3', 'N_A20_1', 'N_A22_1', 'N_A23_1'],
+    'NPV': ['N_V4', 'N_V5', 'N_V_D1', 'N_V_D2', 'N_V10_2_2', 'N_V_SEGUIR', 'N_V_D3', 'N_V10', 'N_V11', 'N_V7', 'N_V12', 'N_V14_1', 'N_V14_2', 'N_V_D4', 'N_V16_2_3', 'N_V20_2_2', 'N_V16_2_2', 'N_V17_2_2', 'N_V18_2_2', 'N_V19_2_2'],
+    'Juridico': ['N_J_D1', 'N_J15_2_1', 'N_J15_2_2', 'N_J_D2', 'N_J_D3', 'N_J20_2_1', 'N_J21_2', 'N_J_D4'],
     'NPI': ['N_PI16_2_1', 'N_PI18_2_1', 'N_PI19_2_1'],
+    'NAP': ['N_A8', 'N_A_D1', 'N_A_SEGUIR', 'N_FIM', 'N_A9', 'N_A15_1', 'N_A17_3', 'N_A_D2', 'N_A20_3', 'N_A20_1', 'N_A22_1', 'N_A23_1'],
     'Outros': ['N_O18_1', 'N_O19_1', 'N_O24', 'N_O25', 'N_O26', 'N_O27']
 }
 
-# As cores precisam acompanhar a nova ordem para manter a lógica visual
-cores_setores = {
-    'Juridico': '#FFEBEE',       # Vermelho/Rosa Claro
-    'NPV': '#FFF8E1',            # Amarelo Claro
-    'Coordenador(a)': '#E8F5E9', # Verde Claro (Centro das atenções)
-    'NAP': '#F3E5F5',            # Roxo Claro
-    'NPI': '#E3F2FD',            # Azul Claro
-    'Outros': '#F5F5F5'          # Cinza
+# Cores vibrantes em tom pastel diretamente para as caixinhas
+cores_caixas = {
+    'Coordenador(a)': '#C8E6C9', # Verde Claro
+    'NPV': '#FFF9C4',            # Amarelo Claro
+    'Juridico': '#FFCDD2',       # Vermelho/Rosa Claro
+    'NPI': '#BBDEFB',            # Azul Claro
+    'NAP': '#E1BEE7',            # Roxo Claro
+    'Outros': '#E0E0E0'          # Cinza
 }
 
 conexoes = [
@@ -163,49 +162,53 @@ conexoes = [
 ]
 
 # ==========================================
-# 5. FUNÇÃO GERADORA DO FLUXOGRAMA
+# 5. FUNÇÃO GERADORA DO FLUXOGRAMA (LIVRE)
 # ==========================================
 def gerar_fluxograma(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Completo')
-    dot.attr(rankdir='LR', compound='true', splines='ortho', nodesep='0.8', ranksep='2.0')
+    # Sem as bordas, podemos dar mais espaçamento para as caixas flutuarem bem
+    dot.attr(rankdir='LR', splines='ortho', nodesep='0.8', ranksep='1.5')
     
+    # Cria as caixas independentes (sem fundos de setor)
     for nome_setor, lista_ids in setores.items():
-        cor_fundo = cores_setores.get(nome_setor, '#FFFFFF')
+        cor_caixa = cores_caixas.get(nome_setor, '#FFFFFF')
         
-        with dot.subgraph(name=f'cluster_{nome_setor}') as c:
-            c.attr(label=nome_setor, style='filled, rounded', fillcolor=cor_fundo, color='#90A4AE', penwidth='2', fontname='Helvetica-Bold', fontsize='20', labelloc='t', labeljust='l', margin='30')
+        for id_caixa in lista_ids:
+            texto_real = textos.get(id_caixa, id_caixa)
             
-            for id_caixa in lista_ids:
-                texto_real = textos.get(id_caixa, id_caixa)
-                
-                if id_caixa not in ['N_INICIO', 'N_FIM']:
-                    texto_exibicao = f"[{nome_setor.upper()}]\n{texto_real}"
-                else:
-                    texto_exibicao = texto_real
-                
-                formato = 'box'
-                if '?' in texto_real:
-                    formato = 'diamond'
-                
-                if id_caixa == 'N_INICIO':
-                    c.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#4CAF50', color='#2E7D32', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='16')
-                
-                elif id_caixa == 'N_FIM':
-                    c.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#F44336', color='#C62828', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='16')
-                
-                elif etapa_destaque and id_caixa == etapa_destaque:
-                    c.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor='#FFD700', color='#B8860B', penwidth='4', fontname='Helvetica-Bold', fontsize='15')
-                
-                else:
-                    c.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor='white', color='#607D8B', penwidth='2', fontname='Helvetica', fontsize='14')
+            # Etiqueta obrigatória na parte de cima do texto
+            if id_caixa not in ['N_INICIO', 'N_FIM']:
+                texto_exibicao = f"[{nome_setor.upper()}]\n{texto_real}"
+            else:
+                texto_exibicao = texto_real
+            
+            formato = 'box'
+            if '?' in texto_real:
+                formato = 'diamond'
+            
+            # Formatação do Nó
+            if id_caixa == 'N_INICIO':
+                dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#4CAF50', color='#2E7D32', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='16')
+            
+            elif id_caixa == 'N_FIM':
+                dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#F44336', color='#C62828', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='16')
+            
+            elif etapa_destaque and id_caixa == etapa_destaque:
+                # O destaque ganha bordas e cores de Ouro Forte
+                dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor='#FFD700', color='#B8860B', penwidth='4', fontname='Helvetica-Bold', fontsize='15')
+            
+            else:
+                # As caixas normais agora carregam a cor do seu setor
+                dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_caixa, color='#78909C', penwidth='2', fontname='Helvetica', fontsize='14')
 
+    # Traçando as setas
     for conexao in conexoes:
         origem = conexao[0]
         destino = conexao[1]
-        cor_seta = '#78909C'
+        cor_seta = '#90A4AE'
         
         if len(conexao) == 3:
-            dot.edge(origem, destino, taillabel=conexao[2], labeldistance='2.5', labelangle='0', fontsize='14', fontname='Helvetica-Bold', fontcolor='#1976D2', color=cor_seta, penwidth='1.5')
+            dot.edge(origem, destino, taillabel=conexao[2], labeldistance='2.5', labelangle='0', fontsize='13', fontname='Helvetica-Bold', fontcolor='#1976D2', color=cor_seta, penwidth='1.5')
         else:
             dot.edge(origem, destino, color=cor_seta, penwidth='1.5')
 
