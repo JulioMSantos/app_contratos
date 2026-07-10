@@ -21,15 +21,15 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
+# ==========================================
 # 2. CONEXÃO COM O GOOGLE PLANILHAS
 # ==========================================
-# Substitua o texto abaixo pelo link gerado na sua planilha (terminado em .csv)
-url_google_sheets = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRXE69ipW9usXVW5msH5SPVV5CMz5tboAlWg_O-9Zdi4_WGxdB5BmTlXxdd_2OSrW6_S91J66bckSDs/pub?output=csv"
+url_google_sheets = "COLE_O_SEU_LINK_AQUI_ENTRE_AS_ASPAS"
 
 try:
     df_bruto = pd.read_csv(url_google_sheets)
     
-    # TRUQUE DE MESTRE: Limpa quebras de linha e espaços soltos dos cabeçalhos
+    # Limpa quebras de linha e espaços soltos dos cabeçalhos
     df_bruto.columns = df_bruto.columns.str.replace('\n', ' ').str.replace('\r', '').str.strip()
     
     # Renomeia as colunas exatas para o padrão interno do nosso código
@@ -39,13 +39,19 @@ try:
         'Etapa Atual': 'Etapa_Atual' 
     })
     
-    # Força as colunas a serem texto (para a busca de números não dar erro)
-    if 'Registro' in df.columns:
-        df['Registro'] = df['Registro'].astype(str)
-    if 'Titulo' in df.columns:
-        df['Titulo'] = df['Titulo'].astype(str)
-    if 'Etapa_Atual' in df.columns:
-        df['Etapa_Atual'] = df['Etapa_Atual'].astype(str)
+    # SISTEMA ANTI-QUEBRA: Verifica se as colunas foram criadas. Se não, cria vazias e avisa.
+    colunas_essenciais = ['Registro', 'Titulo', 'Etapa_Atual']
+    faltaram = [col for col in colunas_essenciais if col not in df.columns]
+    
+    if faltaram:
+        st.warning(f"⚠️ Atenção: As colunas não bateram. O Python leu isto da sua planilha: {df_bruto.columns.tolist()}")
+        for col in faltaram:
+            df[col] = "" # Cria a coluna vazia para o site não quebrar
+    
+    # Força as colunas a serem texto
+    df['Registro'] = df['Registro'].astype(str)
+    df['Titulo'] = df['Titulo'].astype(str)
+    df['Etapa_Atual'] = df['Etapa_Atual'].astype(str)
 
 except Exception as e:
     st.error(f"Erro técnico ao ler a planilha: {e}")
@@ -212,18 +218,16 @@ st.title("Sistema Integra - Rastreamento de Contratos")
 busca = st.text_input("Buscar Projeto (Ex: 066335 ou Nome do Projeto)")
 
 if busca:
-    # A mágica da busca dupla: Procura na coluna de Título OU na de Registro
+    # A busca agora é segura, pois garantimos que as colunas existem
     projeto = df[(df['Registro'].str.contains(busca, case=False, na=False)) | 
                  (df['Titulo'].str.contains(busca, case=False, na=False))]
                  
     if not projeto.empty:
-        # Pega a etapa atual registrada na planilha
         id_etapa = str(projeto.iloc[0]['Etapa_Atual']).strip()
         nome_etapa = textos.get(id_etapa, id_etapa)
         
         st.success(f"**Projeto Encontrado! Etapa Atual:** {nome_etapa}")
         
-        # Desenha o fluxograma acendendo a caixa dessa etapa
         grafico = gerar_fluxograma(etapa_destaque=id_etapa)
         st.graphviz_chart(grafico, use_container_width=False) 
     else:
