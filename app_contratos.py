@@ -162,11 +162,12 @@ conexoes = [
 ]
 
 # ==========================================
-# 5. FUNÇÃO GERADORA DO FLUXOGRAMA (COMPRIMIDO E LEGÍVEL)
+# 5. FUNÇÃO GERADORA DO FLUXOGRAMA (SUPER FONTES)
 # ==========================================
 def gerar_fluxograma(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Completo')
     
+    # Adicionei uma pequena margem (node_margin) caso ajude no respiro
     dot.attr(rankdir='LR', splines='ortho', nodesep='0.5', ranksep='0.4')
     
     for nome_setor, lista_ids in setores.items():
@@ -184,29 +185,30 @@ def gerar_fluxograma(etapa_destaque=None):
             if '?' in texto_real:
                 formato = 'diamond'
             
-            # --- FONTES AUMENTADAS AQUI ---
+            # --- FONTES MAXIMIZADAS AQUI ---
             if id_caixa == 'N_INICIO':
-                dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#4CAF50', color='#2E7D32', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='22')
+                dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#4CAF50', color='#2E7D32', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='32')
             
             elif id_caixa == 'N_FIM':
-                dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#F44336', color='#C62828', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='22')
+                dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#F44336', color='#C62828', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='32')
             
             elif etapa_destaque and id_caixa == etapa_destaque:
-                dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor='#FFD700', color='#B8860B', penwidth='4', fontname='Helvetica-Bold', fontsize='20')
+                dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor='#FFD700', color='#B8860B', penwidth='4', fontname='Helvetica-Bold', fontsize='28')
             
             else:
-                dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_caixa, color='#78909C', penwidth='2', fontname='Helvetica', fontsize='18')
+                # Fonte base mudou para Bold e 24 para legibilidade extrema
+                dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_caixa, color='#78909C', penwidth='2', fontname='Helvetica-Bold', fontsize='24')
 
     for conexao in conexoes:
         origem = conexao[0]
         destino = conexao[1]
         cor_seta = '#90A4AE'
         
+        # --- SETAS MAIS GROSSAS E TEXTOS MAIORES ---
         if len(conexao) == 3:
-            # --- CENTRALIZAÇÃO (label em vez de taillabel) E FONTE MAIOR AQUI ---
-            dot.edge(origem, destino, label=f" {conexao[2]} ", fontsize='16', fontname='Helvetica-Bold', fontcolor='#1976D2', color=cor_seta, penwidth='1.5')
+            dot.edge(origem, destino, label=f" {conexao[2]} ", fontsize='20', fontname='Helvetica-Bold', fontcolor='#1976D2', color=cor_seta, penwidth='2.0')
         else:
-            dot.edge(origem, destino, color=cor_seta, penwidth='1.5')
+            dot.edge(origem, destino, color=cor_seta, penwidth='2.0')
 
     return dot
 
