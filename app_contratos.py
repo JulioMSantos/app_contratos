@@ -17,8 +17,7 @@ st.markdown("""
             box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
         }
         [data-testid="stGraphVizChart"] > svg {
-            /* O SEGREDO ESTÁ AQUI: Força o gráfico a ter 3500px de largura mínima */
-            /* Isso impede o Streamlit de encolher as letras e garante a nitidez */
+            /* Garante que as letras nunca fiquem minúsculas */
             min-width: 3500px !important; 
             height: auto !important;
         }
@@ -29,7 +28,7 @@ st.markdown("""
 # 2. CONEXÃO COM O GOOGLE PLANILHAS
 # ==========================================
 # COLE O SEU LINK DO GOOGLE PLANILHAS AQUI DENTRO DAS ASPAS
-url_google_sheets = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRXE69ipW9usXVW5msH5SPVV5CMz5tboAlWg_O-9Zdi4_WGxdB5BmTlXxdd_2OSrW6_S91J66bckSDs/pub?gid=409266791&single=true&output=csv"
+url_google_sheets = "COLE_O_SEU_LINK_AQUI_ENTRE_AS_ASPAS"
 
 try:
     df_bruto = pd.read_csv(url_google_sheets)
@@ -93,7 +92,7 @@ textos = {
     'N_V_D4': 'Qual o tipo de\nnegociação de TT?', 'N_V16_2_3': '16.2.3 Negociar as\ncláusulas do contrato',
     'N_V20_2_2': '20.2.2 Emitir relatório\nde negociação', 'N_V16_2_2': '16.2.2 Valoração',
     'N_V17_2_2': '17.2.2 Emitir relatório\ntécnico de valoração', 'N_V18_2_2': '18.2.2 Emitir parecer\nde valoração',
-    'N_V19_2_2': '19.2.2 Enviar para\o Jurídico', 'N_A8': '8. Analisar e\nEnquadramento',
+    'N_V19_2_2': '19.2.2 Enviar para\no Jurídico', 'N_A8': '8. Analisar e\nEnquadramento',
     'N_A_D1': 'É um Acordo de parceria?', 'N_A_SEGUIR': 'Seguir conforme o\nenquadramento',
     'N_FIM': 'FIM', 'N_A9': '9. Tramitar para o NPV',
     'N_A15_1': '15.1 Analisar a\ndocumentação', 'N_A17_3': '17.3 Encaminhar por e-mail\npara análise da PRA',
@@ -119,14 +118,13 @@ setores = {
     'Outros': ['N_O18_1', 'N_O19_1', 'N_O24', 'N_O25', 'N_O26', 'N_O27']
 }
 
-# Paleta de Cores para Organização Visual
 cores_setores = {
-    'Coordenador(a)': '#E8F5E9', # Verde Claro (Destaque para o início)
-    'NPV': '#FFF8E1',            # Amarelo Claro
-    'Juridico': '#FFEBEE',       # Vermelho/Rosa Claro
-    'NPI': '#E3F2FD',            # Azul Claro
-    'NAP': '#F3E5F5',            # Roxo Claro
-    'Outros': '#F5F5F5'          # Cinza
+    'Coordenador(a)': '#E8F5E9', 
+    'NPV': '#FFF8E1',            
+    'Juridico': '#FFEBEE',       
+    'NPI': '#E3F2FD',            
+    'NAP': '#F3E5F5',            
+    'Outros': '#F5F5F5'          
 }
 
 conexoes = [
@@ -167,39 +165,53 @@ conexoes = [
 # ==========================================
 def gerar_fluxograma(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Completo')
-    # ranksep aumentado para dar muito mais espaço na horizontal
+    # Ranksep distanciado para não engavetar as setas
     dot.attr(rankdir='LR', compound='true', splines='ortho', nodesep='0.8', ranksep='2.0')
     
     for nome_setor, lista_ids in setores.items():
         cor_fundo = cores_setores.get(nome_setor, '#FFFFFF')
         
         with dot.subgraph(name=f'cluster_{nome_setor}') as c:
-            # As caixas cinzas gigantes agora têm cores distintas por setor
-            c.attr(label=nome_setor, style='filled, rounded', fillcolor=cor_fundo, color='#CFD8DC', penwidth='2', fontname='Helvetica-Bold', fontsize='20', labelloc='t', labeljust='l', margin='30')
+            # Borda sólida e demarcada em cada setor
+            c.attr(label=nome_setor, style='filled, rounded', fillcolor=cor_fundo, color='#90A4AE', penwidth='2', fontname='Helvetica-Bold', fontsize='20', labelloc='t', labeljust='l', margin='30')
             
             for id_caixa in lista_ids:
                 texto_real = textos.get(id_caixa, id_caixa)
                 
+                # O Truque de Mestre: Adiciona o nome do setor dentro do texto da caixa!
+                if id_caixa not in ['N_INICIO', 'N_FIM']:
+                    texto_exibicao = f"[{nome_setor.upper()}]\n{texto_real}"
+                else:
+                    texto_exibicao = texto_real
+                
                 formato = 'box'
                 if '?' in texto_real:
                     formato = 'diamond'
-                elif texto_real in ['Início', 'FIM']:
-                    formato = 'circle'
                 
-                # Aumentei as fontes das caixas de 14 para 16
-                if etapa_destaque and id_caixa == etapa_destaque:
-                    c.node(id_caixa, texto_real, shape=formato, style='filled, rounded', fillcolor='#FFD700', color='#B8860B', penwidth='3', fontname='Helvetica-Bold', fontsize='16')
+                # --- VISUAL EXCLUSIVO PARA O INÍCIO ---
+                if id_caixa == 'N_INICIO':
+                    c.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#4CAF50', color='#2E7D32', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='16')
+                
+                # --- VISUAL EXCLUSIVO PARA O FIM ---
+                elif id_caixa == 'N_FIM':
+                    c.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#F44336', color='#C62828', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='16')
+                
+                # --- CAIXA DESTACADA (PESQUISADA) ---
+                elif etapa_destaque and id_caixa == etapa_destaque:
+                    c.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor='#FFD700', color='#B8860B', penwidth='4', fontname='Helvetica-Bold', fontsize='15')
+                
+                # --- CAIXAS NORMAIS ---
                 else:
-                    c.node(id_caixa, texto_real, shape=formato, style='filled, rounded', fillcolor='white', color='#A0AABF', penwidth='1.5', fontname='Helvetica', fontsize='16')
+                    c.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor='white', color='#607D8B', penwidth='2', fontname='Helvetica', fontsize='14')
 
+    # Traçando as setas
     for conexao in conexoes:
         origem = conexao[0]
         destino = conexao[1]
-        cor_seta = '#8898AA'
+        cor_seta = '#78909C'
         
         if len(conexao) == 3:
-            # Fonte do Sim/Não também aumentada para 14
-            dot.edge(origem, destino, taillabel=conexao[2], labeldistance='2.5', labelangle='0', fontsize='14', fontname='Helvetica-Bold', fontcolor='#4A90E2', color=cor_seta, penwidth='1.5')
+            dot.edge(origem, destino, taillabel=conexao[2], labeldistance='2.5', labelangle='0', fontsize='14', fontname='Helvetica-Bold', fontcolor='#1976D2', color=cor_seta, penwidth='1.5')
         else:
             dot.edge(origem, destino, color=cor_seta, penwidth='1.5')
 
