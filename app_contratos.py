@@ -29,24 +29,26 @@ url_google_sheets = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRXE69ipW9u
 try:
     df_bruto = pd.read_csv(url_google_sheets)
     
-    # --- ADICIONE ESTA LINHA ABAIXO ---
-    st.info(f"Colunas encontradas pelo Python: {df_bruto.columns.tolist()}")
-    # ----------------------------------
+    # TRUQUE DE MESTRE: Limpa quebras de linha e espaços soltos dos cabeçalhos
+    df_bruto.columns = df_bruto.columns.str.replace('\n', ' ').str.replace('\r', '').str.strip()
     
-    # Renomeia as colunas da sua planilha para o padrão do nosso código
+    # Renomeia as colunas exatas para o padrão interno do nosso código
     df = df_bruto.rename(columns={
         'Registro Portal de Projetos': 'Registro',
         'Projeto/Título': 'Titulo',
-        'Etapa Atual': 'Etapa_Atual'
+        'Etapa Atual': 'Etapa_Atual' 
     })
     
-    # Força as colunas a serem texto para a busca não dar erro com números puros
-    df['Registro'] = df['Registro'].astype(str)
-    df['Titulo'] = df['Titulo'].astype(str)
-    df['Etapa_Atual'] = df['Etapa_Atual'].astype(str)
+    # Força as colunas a serem texto (para a busca de números não dar erro)
+    if 'Registro' in df.columns:
+        df['Registro'] = df['Registro'].astype(str)
+    if 'Titulo' in df.columns:
+        df['Titulo'] = df['Titulo'].astype(str)
+    if 'Etapa_Atual' in df.columns:
+        df['Etapa_Atual'] = df['Etapa_Atual'].astype(str)
 
 except Exception as e:
-    st.warning("Planilha ainda não conectada ou erro de leitura. Mostrando fluxograma padrão.")
+    st.error(f"Erro técnico ao ler a planilha: {e}")
     df = pd.DataFrame(columns=['Registro', 'Titulo', 'Etapa_Atual'])
 
 # ==========================================
@@ -186,6 +188,7 @@ def gerar_fluxograma(etapa_destaque=None):
                 elif texto_real in ['Início', 'FIM']:
                     formato = 'circle'
                 
+                # Fontes configuradas para tamanho 14
                 if etapa_destaque and id_caixa == etapa_destaque:
                     c.node(id_caixa, texto_real, shape=formato, style='filled', fillcolor='#FFD700', penwidth='3', fontname='Helvetica-Bold', fontsize='14')
                 else:
@@ -206,22 +209,25 @@ def gerar_fluxograma(etapa_destaque=None):
 # 5. INTERFACE DO APLICATIVO
 # ==========================================
 st.title("Sistema Integra - Rastreamento de Contratos")
-busca = st.text_input("Buscar Projeto (Ex: PRJ-001)")
+busca = st.text_input("Buscar Projeto (Ex: 066335 ou Nome do Projeto)")
 
 if busca:
-    # Filtra procurando na coluna de Registro ou na coluna de Título
+    # A mágica da busca dupla: Procura na coluna de Título OU na de Registro
     projeto = df[(df['Registro'].str.contains(busca, case=False, na=False)) | 
                  (df['Titulo'].str.contains(busca, case=False, na=False))]
                  
     if not projeto.empty:
-        id_etapa = projeto.iloc[0]['Etapa_Atual']
+        # Pega a etapa atual registrada na planilha
+        id_etapa = str(projeto.iloc[0]['Etapa_Atual']).strip()
         nome_etapa = textos.get(id_etapa, id_etapa)
+        
         st.success(f"**Projeto Encontrado! Etapa Atual:** {nome_etapa}")
         
+        # Desenha o fluxograma acendendo a caixa dessa etapa
         grafico = gerar_fluxograma(etapa_destaque=id_etapa)
         st.graphviz_chart(grafico, use_container_width=False) 
     else:
-        st.warning("Projeto não encontrado.")
+        st.warning("Projeto não encontrado. Verifique se o nome ou número de registro estão corretos.")
         st.graphviz_chart(gerar_fluxograma(), use_container_width=False)
 else:
     st.graphviz_chart(gerar_fluxograma(), use_container_width=False)
