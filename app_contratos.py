@@ -109,22 +109,24 @@ textos = {
     'N_O26': '26. Inserir CADIN (PRA)', 'N_O27': '27. Tramitar ao NAP (PRA)'
 }
 
+# REORGANIZADO PARA O COORDENADOR FICAR NO MEIO DO FLUXOGRAMA
 setores = {
-    'Coordenador(a)': ['N_INICIO', 'N_C1', 'N_C_D1', 'N_C2', 'N_C3', 'N_C6', 'N_C13', 'N_C15_3', 'N_C17_2_1'],
-    'NPV': ['N_V4', 'N_V5', 'N_V_D1', 'N_V_D2', 'N_V10_2_2', 'N_V_SEGUIR', 'N_V_D3', 'N_V10', 'N_V11', 'N_V7', 'N_V12', 'N_V14_1', 'N_V14_2', 'N_V_D4', 'N_V16_2_3', 'N_V20_2_2', 'N_V16_2_2', 'N_V17_2_2', 'N_V18_2_2', 'N_V19_2_2'],
     'Juridico': ['N_J_D1', 'N_J15_2_1', 'N_J15_2_2', 'N_J_D2', 'N_J_D3', 'N_J20_2_1', 'N_J21_2', 'N_J_D4'],
-    'NPI': ['N_PI16_2_1', 'N_PI18_2_1', 'N_PI19_2_1'],
+    'NPV': ['N_V4', 'N_V5', 'N_V_D1', 'N_V_D2', 'N_V10_2_2', 'N_V_SEGUIR', 'N_V_D3', 'N_V10', 'N_V11', 'N_V7', 'N_V12', 'N_V14_1', 'N_V14_2', 'N_V_D4', 'N_V16_2_3', 'N_V20_2_2', 'N_V16_2_2', 'N_V17_2_2', 'N_V18_2_2', 'N_V19_2_2'],
+    'Coordenador(a)': ['N_INICIO', 'N_C1', 'N_C_D1', 'N_C2', 'N_C3', 'N_C6', 'N_C13', 'N_C15_3', 'N_C17_2_1'],
     'NAP': ['N_A8', 'N_A_D1', 'N_A_SEGUIR', 'N_FIM', 'N_A9', 'N_A15_1', 'N_A17_3', 'N_A_D2', 'N_A20_3', 'N_A20_1', 'N_A22_1', 'N_A23_1'],
+    'NPI': ['N_PI16_2_1', 'N_PI18_2_1', 'N_PI19_2_1'],
     'Outros': ['N_O18_1', 'N_O19_1', 'N_O24', 'N_O25', 'N_O26', 'N_O27']
 }
 
+# As cores precisam acompanhar a nova ordem para manter a lógica visual
 cores_setores = {
-    'Coordenador(a)': '#E8F5E9', 
-    'NPV': '#FFF8E1',            
-    'Juridico': '#FFEBEE',       
-    'NPI': '#E3F2FD',            
-    'NAP': '#F3E5F5',            
-    'Outros': '#F5F5F5'          
+    'Juridico': '#FFEBEE',       # Vermelho/Rosa Claro
+    'NPV': '#FFF8E1',            # Amarelo Claro
+    'Coordenador(a)': '#E8F5E9', # Verde Claro (Centro das atenções)
+    'NAP': '#F3E5F5',            # Roxo Claro
+    'NPI': '#E3F2FD',            # Azul Claro
+    'Outros': '#F5F5F5'          # Cinza
 }
 
 conexoes = [
@@ -165,20 +167,17 @@ conexoes = [
 # ==========================================
 def gerar_fluxograma(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Completo')
-    # Ranksep distanciado para não engavetar as setas
     dot.attr(rankdir='LR', compound='true', splines='ortho', nodesep='0.8', ranksep='2.0')
     
     for nome_setor, lista_ids in setores.items():
         cor_fundo = cores_setores.get(nome_setor, '#FFFFFF')
         
         with dot.subgraph(name=f'cluster_{nome_setor}') as c:
-            # Borda sólida e demarcada em cada setor
             c.attr(label=nome_setor, style='filled, rounded', fillcolor=cor_fundo, color='#90A4AE', penwidth='2', fontname='Helvetica-Bold', fontsize='20', labelloc='t', labeljust='l', margin='30')
             
             for id_caixa in lista_ids:
                 texto_real = textos.get(id_caixa, id_caixa)
                 
-                # O Truque de Mestre: Adiciona o nome do setor dentro do texto da caixa!
                 if id_caixa not in ['N_INICIO', 'N_FIM']:
                     texto_exibicao = f"[{nome_setor.upper()}]\n{texto_real}"
                 else:
@@ -188,23 +187,18 @@ def gerar_fluxograma(etapa_destaque=None):
                 if '?' in texto_real:
                     formato = 'diamond'
                 
-                # --- VISUAL EXCLUSIVO PARA O INÍCIO ---
                 if id_caixa == 'N_INICIO':
                     c.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#4CAF50', color='#2E7D32', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='16')
                 
-                # --- VISUAL EXCLUSIVO PARA O FIM ---
                 elif id_caixa == 'N_FIM':
                     c.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#F44336', color='#C62828', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='16')
                 
-                # --- CAIXA DESTACADA (PESQUISADA) ---
                 elif etapa_destaque and id_caixa == etapa_destaque:
                     c.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor='#FFD700', color='#B8860B', penwidth='4', fontname='Helvetica-Bold', fontsize='15')
                 
-                # --- CAIXAS NORMAIS ---
                 else:
                     c.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor='white', color='#607D8B', penwidth='2', fontname='Helvetica', fontsize='14')
 
-    # Traçando as setas
     for conexao in conexoes:
         origem = conexao[0]
         destino = conexao[1]
