@@ -5,7 +5,7 @@ import graphviz
 st.set_page_config(layout="wide")
 
 # ==========================================
-# 1. CSS MODERNIZADO: FONTES GIGANTES E LEITURA FÁCIL
+# 1. CSS MODERNIZADO: TAMANHO INTELIGENTE E COMPACTO
 # ==========================================
 st.markdown("""
     <style>
@@ -17,9 +17,11 @@ st.markdown("""
             box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
         }
         [data-testid="stGraphVizChart"] > svg {
-            /* Garante que o gráfico tenha espaço para respirar */
-            min-width: 3500px !important; 
+            /* Tamanho inteligente: não encolhe para estragar a fonte, mas não estica além do necessário */
+            width: max-content !important; 
+            min-width: 100% !important;
             height: auto !important;
+            max-width: none !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -118,14 +120,13 @@ setores = {
     'Outros': ['N_O18_1', 'N_O19_1', 'N_O24', 'N_O25', 'N_O26', 'N_O27']
 }
 
-# Cores vibrantes em tom pastel diretamente para as caixinhas
 cores_caixas = {
-    'Coordenador(a)': '#C8E6C9', # Verde Claro
-    'NPV': '#FFF9C4',            # Amarelo Claro
-    'Juridico': '#FFCDD2',       # Vermelho/Rosa Claro
-    'NPI': '#BBDEFB',            # Azul Claro
-    'NAP': '#E1BEE7',            # Roxo Claro
-    'Outros': '#E0E0E0'          # Cinza
+    'Coordenador(a)': '#C8E6C9', 
+    'NPV': '#FFF9C4',            
+    'Juridico': '#FFCDD2',       
+    'NPI': '#BBDEFB',            
+    'NAP': '#E1BEE7',            
+    'Outros': '#E0E0E0'          
 }
 
 conexoes = [
@@ -162,21 +163,20 @@ conexoes = [
 ]
 
 # ==========================================
-# 5. FUNÇÃO GERADORA DO FLUXOGRAMA (LIVRE)
+# 5. FUNÇÃO GERADORA DO FLUXOGRAMA (COMPRIMIDO)
 # ==========================================
 def gerar_fluxograma(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Completo')
-    # Sem as bordas, podemos dar mais espaçamento para as caixas flutuarem bem
-    dot.attr(rankdir='LR', splines='ortho', nodesep='0.8', ranksep='1.5')
     
-    # Cria as caixas independentes (sem fundos de setor)
+    # RANKSEP e NODESEP reduzidos drasticamente para juntar as caixas
+    dot.attr(rankdir='LR', splines='ortho', nodesep='0.5', ranksep='0.4')
+    
     for nome_setor, lista_ids in setores.items():
         cor_caixa = cores_caixas.get(nome_setor, '#FFFFFF')
         
         for id_caixa in lista_ids:
             texto_real = textos.get(id_caixa, id_caixa)
             
-            # Etiqueta obrigatória na parte de cima do texto
             if id_caixa not in ['N_INICIO', 'N_FIM']:
                 texto_exibicao = f"[{nome_setor.upper()}]\n{texto_real}"
             else:
@@ -186,7 +186,6 @@ def gerar_fluxograma(etapa_destaque=None):
             if '?' in texto_real:
                 formato = 'diamond'
             
-            # Formatação do Nó
             if id_caixa == 'N_INICIO':
                 dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#4CAF50', color='#2E7D32', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='16')
             
@@ -194,21 +193,18 @@ def gerar_fluxograma(etapa_destaque=None):
                 dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#F44336', color='#C62828', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='16')
             
             elif etapa_destaque and id_caixa == etapa_destaque:
-                # O destaque ganha bordas e cores de Ouro Forte
                 dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor='#FFD700', color='#B8860B', penwidth='4', fontname='Helvetica-Bold', fontsize='15')
             
             else:
-                # As caixas normais agora carregam a cor do seu setor
                 dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_caixa, color='#78909C', penwidth='2', fontname='Helvetica', fontsize='14')
 
-    # Traçando as setas
     for conexao in conexoes:
         origem = conexao[0]
         destino = conexao[1]
         cor_seta = '#90A4AE'
         
         if len(conexao) == 3:
-            dot.edge(origem, destino, taillabel=conexao[2], labeldistance='2.5', labelangle='0', fontsize='13', fontname='Helvetica-Bold', fontcolor='#1976D2', color=cor_seta, penwidth='1.5')
+            dot.edge(origem, destino, taillabel=conexao[2], labeldistance='2.5', labelangle='0', fontsize='12', fontname='Helvetica-Bold', fontcolor='#1976D2', color=cor_seta, penwidth='1.5')
         else:
             dot.edge(origem, destino, color=cor_seta, penwidth='1.5')
 
