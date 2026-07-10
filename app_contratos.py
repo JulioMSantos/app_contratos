@@ -5,22 +5,22 @@ import graphviz
 st.set_page_config(layout="wide")
 
 # ==========================================
-# 1. CSS MODERNIZADO PARA O VISUAL DO GRÁFICO
+# 1. CSS MODERNIZADO: FONTES GIGANTES E LEITURA FÁCIL
 # ==========================================
 st.markdown("""
     <style>
-        /* Dá um acabamento premium ao container do gráfico */
         [data-testid="stGraphVizChart"] {
             overflow: auto; 
-            background-color: #FFFFFF; 
+            background-color: #F8F9FA; 
             border-radius: 15px; 
             padding: 20px;
             box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
         }
         [data-testid="stGraphVizChart"] > svg {
-            max-width: none !important; 
-            width: auto !important;
-            height: 900px !important; 
+            /* O SEGREDO ESTÁ AQUI: Força o gráfico a ter 3500px de largura mínima */
+            /* Isso impede o Streamlit de encolher as letras e garante a nitidez */
+            min-width: 3500px !important; 
+            height: auto !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -28,6 +28,7 @@ st.markdown("""
 # ==========================================
 # 2. CONEXÃO COM O GOOGLE PLANILHAS
 # ==========================================
+# COLE O SEU LINK DO GOOGLE PLANILHAS AQUI DENTRO DAS ASPAS
 url_google_sheets = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRXE69ipW9usXVW5msH5SPVV5CMz5tboAlWg_O-9Zdi4_WGxdB5BmTlXxdd_2OSrW6_S91J66bckSDs/pub?gid=409266791&single=true&output=csv"
 
 try:
@@ -57,9 +58,8 @@ except Exception as e:
     df = pd.DataFrame(columns=['Registro', 'Titulo', 'Etapa_Atual'])
 
 # ==========================================
-# 3. TRADUTOR: Da Planilha para o Fluxograma
+# 3. TRADUTOR DE ETAPAS
 # ==========================================
-# Se a pessoa digitar o número na planilha, o código entende qual é a caixa correta
 tradutor_etapas = {
     '1': 'N_C1', '2': 'N_C2', '3': 'N_C3', '4': 'N_V4', '5': 'N_V5',
     '6': 'N_C6', '7': 'N_V7', '8': 'N_A8', '9': 'N_A9', '10': 'N_V10',
@@ -93,7 +93,7 @@ textos = {
     'N_V_D4': 'Qual o tipo de\nnegociação de TT?', 'N_V16_2_3': '16.2.3 Negociar as\ncláusulas do contrato',
     'N_V20_2_2': '20.2.2 Emitir relatório\nde negociação', 'N_V16_2_2': '16.2.2 Valoração',
     'N_V17_2_2': '17.2.2 Emitir relatório\ntécnico de valoração', 'N_V18_2_2': '18.2.2 Emitir parecer\nde valoração',
-    'N_V19_2_2': '19.2.2 Enviar para\no Jurídico', 'N_A8': '8. Analisar e\nEnquadramento',
+    'N_V19_2_2': '19.2.2 Enviar para\o Jurídico', 'N_A8': '8. Analisar e\nEnquadramento',
     'N_A_D1': 'É um Acordo de parceria?', 'N_A_SEGUIR': 'Seguir conforme o\nenquadramento',
     'N_FIM': 'FIM', 'N_A9': '9. Tramitar para o NPV',
     'N_A15_1': '15.1 Analisar a\ndocumentação', 'N_A17_3': '17.3 Encaminhar por e-mail\npara análise da PRA',
@@ -111,12 +111,22 @@ textos = {
 }
 
 setores = {
-    'NPI': ['N_PI16_2_1', 'N_PI18_2_1', 'N_PI19_2_1'],
-    'Juridico': ['N_J_D1', 'N_J15_2_1', 'N_J15_2_2', 'N_J_D2', 'N_J_D3', 'N_J20_2_1', 'N_J21_2', 'N_J_D4'],
     'Coordenador(a)': ['N_INICIO', 'N_C1', 'N_C_D1', 'N_C2', 'N_C3', 'N_C6', 'N_C13', 'N_C15_3', 'N_C17_2_1'],
     'NPV': ['N_V4', 'N_V5', 'N_V_D1', 'N_V_D2', 'N_V10_2_2', 'N_V_SEGUIR', 'N_V_D3', 'N_V10', 'N_V11', 'N_V7', 'N_V12', 'N_V14_1', 'N_V14_2', 'N_V_D4', 'N_V16_2_3', 'N_V20_2_2', 'N_V16_2_2', 'N_V17_2_2', 'N_V18_2_2', 'N_V19_2_2'],
+    'Juridico': ['N_J_D1', 'N_J15_2_1', 'N_J15_2_2', 'N_J_D2', 'N_J_D3', 'N_J20_2_1', 'N_J21_2', 'N_J_D4'],
+    'NPI': ['N_PI16_2_1', 'N_PI18_2_1', 'N_PI19_2_1'],
     'NAP': ['N_A8', 'N_A_D1', 'N_A_SEGUIR', 'N_FIM', 'N_A9', 'N_A15_1', 'N_A17_3', 'N_A_D2', 'N_A20_3', 'N_A20_1', 'N_A22_1', 'N_A23_1'],
     'Outros': ['N_O18_1', 'N_O19_1', 'N_O24', 'N_O25', 'N_O26', 'N_O27']
+}
+
+# Paleta de Cores para Organização Visual
+cores_setores = {
+    'Coordenador(a)': '#E8F5E9', # Verde Claro (Destaque para o início)
+    'NPV': '#FFF8E1',            # Amarelo Claro
+    'Juridico': '#FFEBEE',       # Vermelho/Rosa Claro
+    'NPI': '#E3F2FD',            # Azul Claro
+    'NAP': '#F3E5F5',            # Roxo Claro
+    'Outros': '#F5F5F5'          # Cinza
 }
 
 conexoes = [
@@ -153,46 +163,45 @@ conexoes = [
 ]
 
 # ==========================================
-# 5. FUNÇÃO GERADORA DO FLUXOGRAMA (VISUAL NOVO)
+# 5. FUNÇÃO GERADORA DO FLUXOGRAMA
 # ==========================================
 def gerar_fluxograma(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Completo')
-    # Aumentado o ranksep para as setas respirarem melhor
-    dot.attr(rankdir='LR', compound='true', splines='ortho', nodesep='0.6', ranksep='1.5')
+    # ranksep aumentado para dar muito mais espaço na horizontal
+    dot.attr(rankdir='LR', compound='true', splines='ortho', nodesep='0.8', ranksep='2.0')
     
     for nome_setor, lista_ids in setores.items():
+        cor_fundo = cores_setores.get(nome_setor, '#FFFFFF')
+        
         with dot.subgraph(name=f'cluster_{nome_setor}') as c:
-            # Cor de fundo dos setores um pouco mais suave
-            c.attr(label=nome_setor, style='filled, rounded', color='#F7F9FC', fontname='Helvetica-Bold', fontsize='18', labelloc='t', labeljust='l', margin='25')
+            # As caixas cinzas gigantes agora têm cores distintas por setor
+            c.attr(label=nome_setor, style='filled, rounded', fillcolor=cor_fundo, color='#CFD8DC', penwidth='2', fontname='Helvetica-Bold', fontsize='20', labelloc='t', labeljust='l', margin='30')
             
             for id_caixa in lista_ids:
                 texto_real = textos.get(id_caixa, id_caixa)
                 
-                # ADICIONADO: 'rounded' para caixas mais modernas
                 formato = 'box'
                 if '?' in texto_real:
                     formato = 'diamond'
                 elif texto_real in ['Início', 'FIM']:
                     formato = 'circle'
                 
+                # Aumentei as fontes das caixas de 14 para 16
                 if etapa_destaque and id_caixa == etapa_destaque:
-                    # Caixa destacada (Amarelo Ouro)
-                    c.node(id_caixa, texto_real, shape=formato, style='filled, rounded', fillcolor='#FFD700', color='#B8860B', penwidth='3', fontname='Helvetica-Bold', fontsize='14')
+                    c.node(id_caixa, texto_real, shape=formato, style='filled, rounded', fillcolor='#FFD700', color='#B8860B', penwidth='3', fontname='Helvetica-Bold', fontsize='16')
                 else:
-                    # Caixas normais
-                    c.node(id_caixa, texto_real, shape=formato, style='filled, rounded', fillcolor='white', color='#A0AABF', penwidth='1.5', fontname='Helvetica', fontsize='14')
+                    c.node(id_caixa, texto_real, shape=formato, style='filled, rounded', fillcolor='white', color='#A0AABF', penwidth='1.5', fontname='Helvetica', fontsize='16')
 
     for conexao in conexoes:
         origem = conexao[0]
         destino = conexao[1]
-        
-        # Cor das setas suavizada para não poluir o visual
         cor_seta = '#8898AA'
         
         if len(conexao) == 3:
-            dot.edge(origem, destino, taillabel=conexao[2], labeldistance='2.5', labelangle='0', fontsize='12', fontname='Helvetica-Bold', fontcolor='#4A90E2', color=cor_seta, penwidth='1.2')
+            # Fonte do Sim/Não também aumentada para 14
+            dot.edge(origem, destino, taillabel=conexao[2], labeldistance='2.5', labelangle='0', fontsize='14', fontname='Helvetica-Bold', fontcolor='#4A90E2', color=cor_seta, penwidth='1.5')
         else:
-            dot.edge(origem, destino, color=cor_seta, penwidth='1.2')
+            dot.edge(origem, destino, color=cor_seta, penwidth='1.5')
 
     return dot
 
@@ -207,13 +216,8 @@ if busca:
                  (df['Titulo'].str.contains(busca, case=False, na=False))]
                  
     if not projeto.empty:
-        # Pega a etapa digitada e limpa o ".0" que o pandas cria acidentalmente
         etapa_bruta = str(projeto.iloc[0]['Etapa_Atual']).strip().replace('.0', '')
-        
-        # Usa o tradutor para converter "8" em "N_A8" (se falhar, mantém o original)
         id_etapa = tradutor_etapas.get(etapa_bruta, etapa_bruta)
-        
-        # Pega o texto bonito para mostrar na mensagem verde
         nome_etapa = textos.get(id_etapa, etapa_bruta)
         
         st.success(f"**Projeto Encontrado! Etapa Atual:** {nome_etapa}")
