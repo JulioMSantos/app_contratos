@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import graphviz
-import textwrap  # <--- NOVA BIBLIOTECA: Faz a quebra automática de linhas
+import textwrap
 
 st.set_page_config(layout="wide")
 
@@ -163,36 +163,39 @@ conexoes = [
 ]
 
 # ==========================================
-# 5. FUNÇÃO GERADORA DO FLUXOGRAMA (ESPREMIDO HORIZONTALMENTE)
+# 5. FUNÇÃO GERADORA DO FLUXOGRAMA (TRUQUE DO HTML)
 # ==========================================
 def gerar_fluxograma(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Completo')
     
-    # Reduzimos ainda mais o espaçamento horizontal (ranksep)
     dot.attr(rankdir='LR', splines='ortho', nodesep='0.5', ranksep='0.3')
     
-    # Mantém as margens justas
-    dot.attr('node', margin='0.08,0.05', width='0', height='0')
+    # Reduzimos um pouco a margem para caixas ainda mais justas
+    dot.attr('node', margin='0.1,0.08', width='0', height='0')
     
     for nome_setor, lista_ids in setores.items():
         cor_caixa = cores_caixas.get(nome_setor, '#FFFFFF')
         
         for id_caixa in lista_ids:
-            # 1. Pegamos o texto e removemos as quebras de linha antigas (manuais)
+            # 1. Pega o texto e limpa
             texto_bruto = textos.get(id_caixa, id_caixa).replace('\n', ' ')
             
-            # 2. O MÁGICO: Limitamos a no máximo 22 caracteres por linha!
-            # Isso força as caixas a crescerem para baixo, encurtando a largura geral.
-            texto_quebrado = textwrap.fill(texto_bruto, width=22)
+            # 2. textwrap.wrap retorna uma lista de linhas (ex: ['19.2.1 Encaminhar', 'e-mail para Empresa,', ...])
+            linhas = textwrap.wrap(texto_bruto, width=22)
             
-            if id_caixa not in ['N_INICIO', 'N_FIM']:
-                texto_exibicao = f"[{nome_setor.upper()}]\n{texto_quebrado}"
-            else:
-                texto_exibicao = texto_quebrado
+            # 3. Juntamos as linhas com a tag <BR/> do HTML para grudar os textos
+            texto_html_linhas = "<BR/>".join(linhas)
             
             formato = 'box'
             if '?' in texto_bruto:
                 formato = 'diamond'
+            
+            # O TRUQUE DE MESTRE: Usamos os sinais < e > por fora para o Graphviz entender que é HTML.
+            # A etiqueta do setor agora tem tamanho 14 e cor cinza para ficar discreta e economizar espaço!
+            if id_caixa not in ['N_INICIO', 'N_FIM']:
+                texto_exibicao = f"<<FONT POINT-SIZE='14' COLOR='#455A64'>[{nome_setor.upper()}]</FONT><BR/>{texto_html_linhas}>"
+            else:
+                texto_exibicao = f"<{texto_html_linhas}>"
             
             if id_caixa == 'N_INICIO':
                 dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#4CAF50', color='#2E7D32', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='32')
