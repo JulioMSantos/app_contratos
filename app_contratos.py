@@ -163,40 +163,40 @@ conexoes = [
 ]
 
 # ==========================================
-# 5. FUNÇÃO GERADORA DO FLUXOGRAMA (TRUQUE DO HTML)
+# 5. FUNÇÃO GERADORA DO FLUXOGRAMA (ESPAÇAMENTO NATIVO PERFEITO)
 # ==========================================
 def gerar_fluxograma(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Completo')
     
     dot.attr(rankdir='LR', splines='ortho', nodesep='0.5', ranksep='0.3')
     
-    # Reduzimos um pouco a margem para caixas ainda mais justas
-    dot.attr('node', margin='0.1,0.08', width='0', height='0')
+    # Mantém o limite justo ao redor do texto
+    dot.attr('node', margin='0.1,0.05', width='0', height='0')
     
     for nome_setor, lista_ids in setores.items():
         cor_caixa = cores_caixas.get(nome_setor, '#FFFFFF')
         
         for id_caixa in lista_ids:
-            # 1. Pega o texto e limpa
+            # Pega o texto e limpa quebras manuais
             texto_bruto = textos.get(id_caixa, id_caixa).replace('\n', ' ')
             
-            # 2. textwrap.wrap retorna uma lista de linhas (ex: ['19.2.1 Encaminhar', 'e-mail para Empresa,', ...])
+            # Quebra inteligente em 22 caracteres
             linhas = textwrap.wrap(texto_bruto, width=22)
             
-            # 3. Juntamos as linhas com a tag <BR/> do HTML para grudar os textos
-            texto_html_linhas = "<BR/>".join(linhas)
+            # O TRUQUE PARA GRUDAR: Juntamos as linhas com o \n nativo do Python, e não mais com HTML
+            texto_linhas = "\n".join(linhas)
             
             formato = 'box'
             if '?' in texto_bruto:
                 formato = 'diamond'
             
-            # O TRUQUE DE MESTRE: Usamos os sinais < e > por fora para o Graphviz entender que é HTML.
-            # A etiqueta do setor agora tem tamanho 14 e cor cinza para ficar discreta e economizar espaço!
+            # Cria a exibição final
             if id_caixa not in ['N_INICIO', 'N_FIM']:
-                texto_exibicao = f"<<FONT POINT-SIZE='14' COLOR='#455A64'>[{nome_setor.upper()}]</FONT><BR/>{texto_html_linhas}>"
+                texto_exibicao = f"[{nome_setor.upper()}]\n{texto_linhas}"
             else:
-                texto_exibicao = f"<{texto_html_linhas}>"
+                texto_exibicao = texto_linhas
             
+            # Desenha as caixas com o texto nativo grudado
             if id_caixa == 'N_INICIO':
                 dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#4CAF50', color='#2E7D32', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='32')
             
