@@ -3,25 +3,40 @@ import pandas as pd
 import graphviz
 import textwrap
 
-st.set_page_config(layout="wide")
+# Configuração da página e uso do tema nativo
+st.set_page_config(layout="wide", page_title="Sistema Integra", page_icon="📊")
 
 # ==========================================
-# 1. CSS MODERNIZADO: TAMANHO INTELIGENTE E COMPACTO
+# 1. CSS MODERNIZADO: PAINEL FIXO E FLUXOGRAMA
 # ==========================================
 st.markdown("""
     <style>
+        /* Gráfico adaptável */
         [data-testid="stGraphVizChart"] {
             overflow: auto; 
             background-color: #F8F9FA; 
             border-radius: 15px; 
             padding: 20px;
             box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: center;
         }
         [data-testid="stGraphVizChart"] > svg {
-            width: max-content !important; 
-            min-width: 100% !important;
+            max-width: 100% !important; 
             height: auto !important;
-            max-width: none !important;
+        }
+        
+        /* Cabeçalho Fixo (Sticky) para Título e Progresso */
+        .painel-fixo {
+            position: sticky;
+            top: 2.875rem; /* Altura padrão da barra superior do Streamlit */
+            background-color: var(--secondary-background-color);
+            z-index: 999;
+            padding: 15px 20px;
+            border-radius: 10px;
+            border-left: 5px solid #4CAF50;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -29,7 +44,6 @@ st.markdown("""
 # ==========================================
 # 2. CONEXÃO COM O GOOGLE PLANILHAS
 # ==========================================
-# COLE O SEU LINK DO GOOGLE PLANILHAS AQUI DENTRO DAS ASPAS
 url_google_sheets = "COLE_O_SEU_LINK_AQUI_ENTRE_AS_ASPAS"
 
 try:
@@ -44,9 +58,7 @@ try:
     
     colunas_essenciais = ['Registro', 'Titulo', 'Etapa_Atual']
     faltaram = [col for col in colunas_essenciais if col not in df.columns]
-    
     if faltaram:
-        st.warning(f"⚠️ Atenção: As colunas não bateram. Lendo: {df_bruto.columns.tolist()}")
         for col in faltaram:
             df[col] = "" 
             
@@ -55,11 +67,10 @@ try:
     df['Etapa_Atual'] = df['Etapa_Atual'].astype(str)
 
 except Exception as e:
-    st.error(f"Erro técnico ao ler a planilha: {e}")
     df = pd.DataFrame(columns=['Registro', 'Titulo', 'Etapa_Atual'])
 
 # ==========================================
-# 3. TRADUTOR DE ETAPAS
+# 3. DICIONÁRIOS E MAPAS DE PROGRESSO
 # ==========================================
 tradutor_etapas = {
     '1': 'N_C1', '2': 'N_C2', '3': 'N_C3', '4': 'N_V4', '5': 'N_V5',
@@ -76,9 +87,6 @@ tradutor_etapas = {
     '24': 'N_O24', '25': 'N_O25', '26': 'N_O26', '27': 'N_O27'
 }
 
-# ==========================================
-# 4. DICIONÁRIOS E MAPEAMENTOS DO FLUXOGRAMA
-# ==========================================
 textos = {
     'N_INICIO': 'Início', 'N_C1': '1. Abrir processo no PEN\ne preencher formulário',
     'N_C_D1': 'Algum documento\npreviamente acordado?', 'N_C2': '2. Anexar ao Processo PEN',
@@ -121,12 +129,8 @@ setores = {
 }
 
 cores_caixas = {
-    'Coordenador(a)': '#C8E6C9', 
-    'NPV': '#FFF9C4',            
-    'Juridico': '#FFCDD2',       
-    'NPI': '#BBDEFB',            
-    'NAP': '#E1BEE7',            
-    'Outros': '#E0E0E0'          
+    'Coordenador(a)': '#C8E6C9', 'NPV': '#FFF9C4', 'Juridico': '#FFCDD2',       
+    'NPI': '#BBDEFB', 'NAP': '#E1BEE7', 'Outros': '#E0E0E0'          
 }
 
 conexoes = [
@@ -162,86 +166,140 @@ conexoes = [
     ('N_O26', 'N_O27')
 ]
 
+# Função para classificar as Fases e o Progresso da Barra
+def avaliar_status(id_etapa):
+    if id_etapa in setores['Coordenador(a)']: return 20, 1
+    elif id_etapa in setores['NPV']: return 40, 2
+    elif id_etapa in setores['Juridico'] or id_etapa in setores['NPI']: return 60, 3
+    elif id_etapa in setores['NAP'] or id_etapa in setores['Outros']: 
+        if id_etapa in ['N_FIM', 'N_A_SEGUIR']: return 100, 5
+        return 80, 4
+    else: return 5, 1
+
 # ==========================================
-# 5. FUNÇÃO GERADORA DO FLUXOGRAMA (ESPAÇAMENTO NATIVO PERFEITO)
+# 4. FUNÇÃO GERADORA DO FLUXOGRAMA VERTICAL
 # ==========================================
 def gerar_fluxograma(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Completo')
     
-    dot.attr(rankdir='LR', splines='ortho', nodesep='0.5', ranksep='0.3')
-    
-    # Mantém o limite justo ao redor do texto
+    # rankdir='TB' para vertical. nodesep/ranksep controlam espaços.
+    dot.attr(rankdir='TB', splines='ortho', nodesep='0.6', ranksep='0.6')
     dot.attr('node', margin='0.1,0.05', width='0', height='0')
     
     for nome_setor, lista_ids in setores.items():
         cor_caixa = cores_caixas.get(nome_setor, '#FFFFFF')
         
         for id_caixa in lista_ids:
-            # Pega o texto e limpa quebras manuais
             texto_bruto = textos.get(id_caixa, id_caixa).replace('\n', ' ')
-            
-            # Quebra inteligente em 22 caracteres
             linhas = textwrap.wrap(texto_bruto, width=22)
-            
-            # O TRUQUE PARA GRUDAR: Juntamos as linhas com o \n nativo do Python, e não mais com HTML
             texto_linhas = "\n".join(linhas)
             
             formato = 'box'
-            if '?' in texto_bruto:
-                formato = 'diamond'
+            if '?' in texto_bruto: formato = 'diamond'
             
-            # Cria a exibição final
             if id_caixa not in ['N_INICIO', 'N_FIM']:
                 texto_exibicao = f"[{nome_setor.upper()}]\n{texto_linhas}"
             else:
                 texto_exibicao = texto_linhas
             
-            # Desenha as caixas com o texto nativo grudado
             if id_caixa == 'N_INICIO':
-                dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#4CAF50', color='#2E7D32', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='32')
-            
+                dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#4CAF50', color='#2E7D32', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='24')
             elif id_caixa == 'N_FIM':
-                dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#F44336', color='#C62828', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='32')
-            
+                dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#F44336', color='#C62828', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='24')
             elif etapa_destaque and id_caixa == etapa_destaque:
-                dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor='#FFD700', color='#B8860B', penwidth='4', fontname='Helvetica-Bold', fontsize='28')
-            
+                dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor='#FFD700', color='#B8860B', penwidth='4', fontname='Helvetica-Bold', fontsize='22')
             else:
-                dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_caixa, color='#78909C', penwidth='2', fontname='Helvetica-Bold', fontsize='24')
+                dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_caixa, color='#78909C', penwidth='2', fontname='Helvetica-Bold', fontsize='18')
 
     for conexao in conexoes:
-        origem = conexao[0]
-        destino = conexao[1]
+        origem, destino = conexao[0], conexao[1]
         cor_seta = '#90A4AE'
-        
         if len(conexao) == 3:
-            dot.edge(origem, destino, label=f" {conexao[2]} ", fontsize='20', fontname='Helvetica-Bold', fontcolor='#1976D2', color=cor_seta, penwidth='2.0')
+            dot.edge(origem, destino, label=f" {conexao[2]} ", fontsize='16', fontname='Helvetica-Bold', fontcolor='#1976D2', color=cor_seta, penwidth='2.0')
         else:
             dot.edge(origem, destino, color=cor_seta, penwidth='2.0')
 
     return dot
 
 # ==========================================
-# 6. INTERFACE DO APLICATIVO
+# 5. ESTRUTURA DO APLICATIVO
 # ==========================================
-st.title("Sistema Integra - Rastreamento de Contratos")
-busca = st.text_input("Buscar Projeto (Ex: 066335 ou Nome do Projeto)")
+# Preparando abas para o futuro
+aba_parcerias, aba_outros, aba_nap = st.tabs([
+    "🤝 Acordos de Parceria", 
+    "📝 Outros Contratos", 
+    "⚙️ Visão Interna (NAP)"
+])
 
-if busca:
-    projeto = df[(df['Registro'].str.contains(busca, case=False, na=False)) | 
-                 (df['Titulo'].str.contains(busca, case=False, na=False))]
-                 
-    if not projeto.empty:
-        etapa_bruta = str(projeto.iloc[0]['Etapa_Atual']).strip().replace('.0', '')
-        id_etapa = tradutor_etapas.get(etapa_bruta, etapa_bruta)
-        nome_etapa = textos.get(id_etapa, etapa_bruta)
-        
-        st.success(f"**Projeto Encontrado! Etapa Atual:** {nome_etapa.replace(chr(10), ' ')}")
-        
-        grafico = gerar_fluxograma(etapa_destaque=id_etapa)
-        st.graphviz_chart(grafico, use_container_width=False) 
+# Construindo a visão atual dentro da Aba Principal
+with aba_parcerias:
+    st.title("Sistema Integra - Rastreamento de Parcerias")
+    busca = st.text_input("Buscar Projeto (Ex: 066335 ou Nome do Projeto)")
+
+    if busca:
+        projeto = df[(df['Registro'].str.contains(busca, case=False, na=False)) | 
+                     (df['Titulo'].str.contains(busca, case=False, na=False))]
+                     
+        if not projeto.empty:
+            num_projeto = str(projeto.iloc[0]['Registro']).replace('.0', '')
+            tit_projeto = str(projeto.iloc[0]['Titulo'])
+            etapa_bruta = str(projeto.iloc[0]['Etapa_Atual']).strip().replace('.0', '')
+            
+            id_etapa = tradutor_etapas.get(etapa_bruta, etapa_bruta)
+            nome_etapa = textos.get(id_etapa, etapa_bruta)
+            
+            porcentagem, etapa_macro = avaliar_status(id_etapa)
+            
+            # --- MARCA PÁGINAS LATERAL (SIDEBAR) ---
+            fases_nomes = [
+                "1. Submissão (Coordenador)",
+                "2. Negociação (NPV)",
+                "3. Análise (Jurídico/NPI)",
+                "4. Enquadramento (NAP/PRA)",
+                "5. Concluído"
+            ]
+            
+            st.sidebar.markdown("### 📍 Linha do Tempo do Projeto")
+            st.sidebar.markdown(f"**Projeto:** {num_projeto}")
+            st.sidebar.markdown("---")
+            
+            for i, nome_fase in enumerate(fases_nomes, 1):
+                if i < etapa_macro:
+                    # Fase concluída (Fundo Verde)
+                    st.sidebar.markdown(f"<div style='background-color:#E8F5E9; color:#2E7D32; padding:10px; border-radius:5px; margin-bottom:8px; border-left:4px solid #4CAF50;'><b>✅ {nome_fase}</b></div>", unsafe_allow_html=True)
+                elif i == etapa_macro:
+                    # Fase atual (Fundo Amarelo)
+                    st.sidebar.markdown(f"<div style='background-color:#FFF9C4; color:#F57F17; padding:10px; border-radius:5px; margin-bottom:8px; border-left:4px solid #FBC02D; box-shadow: 0px 2px 5px rgba(0,0,0,0.1);'><b>⏳ {nome_fase}</b></div>", unsafe_allow_html=True)
+                else:
+                    # Fase pendente (Fundo Branco)
+                    st.sidebar.markdown(f"<div style='background-color:#FFFFFF; color:#9E9E9E; padding:10px; border-radius:5px; margin-bottom:8px; border:1px solid #E0E0E0;'><b>🔒 {nome_fase}</b></div>", unsafe_allow_html=True)
+
+            # --- CABEÇALHO FIXO COM PORCENTAGEM (STICKY) ---
+            st.markdown(f"""
+                <div class="painel-fixo">
+                    <h4 style="margin: 0 0 10px 0;">Nº {num_projeto} - {tit_projeto}</h4>
+                    <div style="background-color: #E0E0E0; border-radius: 10px; width: 100%; height: 20px;">
+                        <div style="background-color: #4CAF50; width: {porcentagem}%; height: 100%; border-radius: 10px; transition: width 0.5s;"></div>
+                    </div>
+                    <p style="text-align: right; margin: 5px 0 0 0; font-size: 14px; font-weight: bold; color: var(--text-color);">
+                        Status: {nome_etapa.replace(chr(10), ' ')} ({porcentagem}% concluído)
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # --- GERAR GRÁFICO ---
+            grafico = gerar_fluxograma(etapa_destaque=id_etapa)
+            st.graphviz_chart(grafico, use_container_width=False) 
+        else:
+            st.warning("Projeto não encontrado. Verifique se o nome ou número de registro estão corretos.")
+            st.graphviz_chart(gerar_fluxograma(), use_container_width=False)
     else:
-        st.warning("Projeto não encontrado. Verifique se o nome ou número de registro estão corretos.")
+        st.info("Digite um número ou título acima para buscar e acompanhar o projeto.")
         st.graphviz_chart(gerar_fluxograma(), use_container_width=False)
-else:
-    st.graphviz_chart(gerar_fluxograma(), use_container_width=False)
+
+# Deixando um esqueleto simples para as próximas telas
+with aba_outros:
+    st.write("Em breve: Fluxograma de outros tipos de contrato.")
+
+with aba_nap:
+    st.write("Em breve: Painel administrativo para acompanhamento geral do NAP.")
