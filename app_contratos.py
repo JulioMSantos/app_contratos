@@ -6,7 +6,7 @@ import textwrap
 st.set_page_config(layout="wide", page_title="Sistema Integra", page_icon="📊")
 
 # ==========================================
-# 1. CSS MODERNIZADO: PAINEL FIXO ESCURO E FLUXOGRAMA
+# 1. CSS MODERNIZADO
 # ==========================================
 st.markdown("""
     <style>
@@ -23,50 +23,6 @@ st.markdown("""
         [data-testid="stGraphVizChart"] > svg {
             max-width: 100% !important; 
             height: auto !important;
-        }
-        
-        /* O MÁGICO: Cabeçalho Fixo (Sticky) Escuro inspirado na sua imagem */
-        .painel-fixo {
-            position: -webkit-sticky;
-            position: sticky;
-            top: 2.875rem; /* Evita ficar debaixo da barra superior do Streamlit */
-            background-color: #1A1C23; /* Fundo escuro elegante */
-            color: #FFFFFF; /* Letras brancas */
-            z-index: 99999;
-            padding: 20px 25px;
-            border-radius: 8px;
-            border-left: 6px solid #4CAF50;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
-            margin-bottom: 2rem;
-            margin-top: 1rem;
-        }
-        .painel-titulo {
-            margin: 0 0 15px 0;
-            font-size: 22px;
-            font-weight: bold;
-            font-family: sans-serif;
-            letter-spacing: 0.5px;
-        }
-        .barra-fundo {
-            background-color: #3B3F4A; /* Cinza escuro da trilha */
-            border-radius: 10px; 
-            width: 100%; 
-            height: 18px;
-            margin-bottom: 8px;
-        }
-        .barra-progresso {
-            background-color: #4CAF50; /* Verde vivo */
-            height: 100%; 
-            border-radius: 10px; 
-            transition: width 0.8s ease-in-out;
-        }
-        .painel-status {
-            text-align: right; 
-            margin: 0; 
-            font-size: 15px; 
-            font-weight: 600; 
-            color: #E0E0E0;
-            font-family: sans-serif;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -203,31 +159,24 @@ def avaliar_status(id_etapa):
         return 80, 4
     else: return 5, 1
 
-# O Algoritmo que descobre o passado do projeto para pintar de verde
 def obter_historico_concluido(etapa_atual):
     if not etapa_atual:
         return set()
-    
-    # Cria o caminho de trás pra frente
     grafo_reverso = {}
     for origem, destino, *resto in conexoes:
         if destino not in grafo_reverso:
             grafo_reverso[destino] = []
         grafo_reverso[destino].append(origem)
-    
     completados = set()
     fila = [etapa_atual]
-    
     while fila:
         atual = fila.pop(0)
         if atual not in completados:
             completados.add(atual)
             if atual in grafo_reverso:
                 fila.extend(grafo_reverso[atual])
-                
     if etapa_atual in completados:
-        completados.remove(etapa_atual) # Tira a etapa atual do verde para ela ficar amarela
-        
+        completados.remove(etapa_atual)
     return completados
 
 # ==========================================
@@ -239,7 +188,6 @@ def gerar_fluxograma(etapa_destaque=None):
     dot.attr(rankdir='TB', splines='ortho', nodesep='0.6', ranksep='0.6')
     dot.attr('node', margin='0.1,0.05', width='0', height='0')
     
-    # Calcula as etapas que ficaram para trás
     etapas_concluidas = obter_historico_concluido(etapa_destaque)
     
     for nome_setor, lista_ids in setores.items():
@@ -256,22 +204,17 @@ def gerar_fluxograma(etapa_destaque=None):
             else:
                 texto_exibicao = texto_linhas
             
-            # === LÓGICA DE CORES DA "LINHA VISUAL" ===
             if id_caixa == 'N_INICIO':
                 cor_fundo, cor_borda, cor_fonte = '#4CAF50', '#2E7D32', 'white'
             elif id_caixa == 'N_FIM':
                 cor_fundo, cor_borda, cor_fonte = '#F44336', '#C62828', 'white'
             elif id_caixa == etapa_destaque:
-                # ETAPA ATUAL: Amarelo Ouro Vivo
                 cor_fundo, cor_borda, cor_fonte = '#FFD700', '#B8860B', 'black'
             elif id_caixa in etapas_concluidas:
-                # PASSADO: Tudo Verde Suave
                 cor_fundo, cor_borda, cor_fonte = '#C8E6C9', '#2E7D32', 'black'
             else:
-                # FUTURO: Tudo Branco
                 cor_fundo, cor_borda, cor_fonte = '#FFFFFF', '#90A4AE', 'black'
             
-            # Desenha a caixa com as cores definidas
             if id_caixa in ['N_INICIO', 'N_FIM']:
                 dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth='3', fontname='Helvetica-Bold', fontsize='24')
             elif id_caixa == etapa_destaque:
@@ -299,7 +242,6 @@ aba_parcerias, aba_outros, aba_nap = st.tabs([
 ])
 
 with aba_parcerias:
-    # A barra de busca fica FORA do painel escuro, como na sua imagem
     busca = st.text_input("Buscar Projeto (Ex: 066335 ou Nome do Projeto)").strip()
 
     if busca:
@@ -316,18 +258,17 @@ with aba_parcerias:
             
             porcentagem, etapa_macro = avaliar_status(id_etapa)
             
-            # --- PAINEL FIXO ESCURO NO ESTILO DA SUA IMAGEM ---
-            st.markdown(f"""
-                <div class="painel-fixo">
-                    <p class="painel-titulo">Nº {num_projeto} - {tit_projeto}</p>
-                    <div class="barra-fundo">
-                        <div class="barra-progresso" style="width: {porcentagem}%;"></div>
-                    </div>
-                    <p class="painel-status">
-                        Status: {nome_etapa.replace(chr(10), ' ')} ({porcentagem}% concluído)
-                    </p>
-                </div>
-            """, unsafe_allow_html=True)
+            # ==========================================
+            # A MÁGICA ACONTECE AQUI: Tudo fixo na Barra Lateral!
+            # ==========================================
+            st.sidebar.title("📊 Painel do Projeto")
+            st.sidebar.markdown(f"### Nº {num_projeto}")
+            st.sidebar.markdown(f"**{tit_projeto}**")
+            
+            # Barra de progresso nativa do Streamlit (Muito mais limpa e fluida)
+            st.sidebar.progress(porcentagem / 100, text=f"Progresso: {porcentagem}% Concluído")
+            
+            st.sidebar.markdown("---")
             
             # --- MENU LATERAL (MARCA PÁGINAS MACRO) ---
             fases_nomes = [
@@ -338,9 +279,7 @@ with aba_parcerias:
                 "5. Concluído"
             ]
             
-            st.sidebar.markdown("### 📍 Resumo do Projeto")
-            st.sidebar.markdown(f"**Nº:** {num_projeto}")
-            st.sidebar.markdown("---")
+            st.sidebar.markdown("### 📍 Linha do Tempo")
             
             for i, nome_fase in enumerate(fases_nomes, 1):
                 if i < etapa_macro:
@@ -350,7 +289,7 @@ with aba_parcerias:
                 else:
                     st.sidebar.markdown(f"<div style='background-color:#FFFFFF; color:#9E9E9E; padding:10px; border-radius:5px; margin-bottom:8px; border:1px solid #E0E0E0;'><b>🔒 {nome_fase}</b></div>", unsafe_allow_html=True)
 
-            # --- GERAR GRÁFICO DA LINHA DO TEMPO ---
+            # --- GERAR GRÁFICO DA LINHA DO TEMPO NO CENTRO ---
             grafico = gerar_fluxograma(etapa_destaque=id_etapa)
             st.graphviz_chart(grafico, use_container_width=False) 
         else:
