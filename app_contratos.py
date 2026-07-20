@@ -44,10 +44,14 @@ st.markdown("""
 # ==========================================
 # 2. CONEXÃO COM O GOOGLE PLANILHAS
 # ==========================================
+# COLE O SEU LINK DO GOOGLE PLANILHAS AQUI DENTRO DAS ASPAS
 url_google_sheets = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRXE69ipW9usXVW5msH5SPVV5CMz5tboAlWg_O-9Zdi4_WGxdB5BmTlXxdd_2OSrW6_S91J66bckSDs/pub?output=csv"
 
 try:
-    df_bruto = pd.read_csv(url_google_sheets)
+    # A MÁGICA ESTÁ AQUI: dtype=str impede que o Python engula os zeros à esquerda!
+    df_bruto = pd.read_csv(url_google_sheets, dtype=str)
+    
+    # Limpa quebras de linha dos nomes das colunas
     df_bruto.columns = df_bruto.columns.str.replace('\n', ' ').str.replace('\r', '').str.strip()
     
     df = df_bruto.rename(columns={
@@ -58,17 +62,20 @@ try:
     
     colunas_essenciais = ['Registro', 'Titulo', 'Etapa_Atual']
     faltaram = [col for col in colunas_essenciais if col not in df.columns]
+    
     if faltaram:
+        st.warning(f"⚠️ Atenção: As colunas não bateram. Lendo: {df_bruto.columns.tolist()}")
         for col in faltaram:
             df[col] = "" 
             
-    df['Registro'] = df['Registro'].astype(str)
-    df['Titulo'] = df['Titulo'].astype(str)
-    df['Etapa_Atual'] = df['Etapa_Atual'].astype(str)
+    # Força a ser string de novo, remove eventuais '.0' fantasmas e limpa espaços nas bordas
+    df['Registro'] = df['Registro'].astype(str).str.replace('.0', '', regex=False).str.strip()
+    df['Titulo'] = df['Titulo'].astype(str).str.strip()
+    df['Etapa_Atual'] = df['Etapa_Atual'].astype(str).str.replace('.0', '', regex=False).str.strip()
 
 except Exception as e:
+    st.error(f"Erro técnico ao ler a planilha: {e}")
     df = pd.DataFrame(columns=['Registro', 'Titulo', 'Etapa_Atual'])
-
 # ==========================================
 # 3. DICIONÁRIOS E MAPAS DE PROGRESSO
 # ==========================================
