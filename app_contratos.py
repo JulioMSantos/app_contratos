@@ -3,15 +3,14 @@ import pandas as pd
 import graphviz
 import textwrap
 
-# Configuração da página e uso do tema nativo
 st.set_page_config(layout="wide", page_title="Sistema Integra", page_icon="📊")
 
 # ==========================================
-# 1. CSS MODERNIZADO: PAINEL FIXO E FLUXOGRAMA
+# 1. CSS MODERNIZADO: PAINEL FIXO ESCURO E FLUXOGRAMA
 # ==========================================
 st.markdown("""
     <style>
-        /* Gráfico adaptável */
+        /* Container do Gráfico */
         [data-testid="stGraphVizChart"] {
             overflow: auto; 
             background-color: #F8F9FA; 
@@ -26,17 +25,48 @@ st.markdown("""
             height: auto !important;
         }
         
-        /* Cabeçalho Fixo (Sticky) para Título e Progresso */
+        /* O MÁGICO: Cabeçalho Fixo (Sticky) Escuro inspirado na sua imagem */
         .painel-fixo {
+            position: -webkit-sticky;
             position: sticky;
-            top: 2.875rem; /* Altura padrão da barra superior do Streamlit */
-            background-color: var(--secondary-background-color);
-            z-index: 999;
-            padding: 15px 20px;
-            border-radius: 10px;
-            border-left: 5px solid #4CAF50;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+            top: 2.875rem; /* Evita ficar debaixo da barra superior do Streamlit */
+            background-color: #1A1C23; /* Fundo escuro elegante */
+            color: #FFFFFF; /* Letras brancas */
+            z-index: 99999;
+            padding: 20px 25px;
+            border-radius: 8px;
+            border-left: 6px solid #4CAF50;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        .painel-titulo {
+            margin: 0 0 15px 0;
+            font-size: 22px;
+            font-weight: bold;
+            font-family: sans-serif;
+            letter-spacing: 0.5px;
+        }
+        .barra-fundo {
+            background-color: #3B3F4A; /* Cinza escuro da trilha */
+            border-radius: 10px; 
+            width: 100%; 
+            height: 18px;
+            margin-bottom: 8px;
+        }
+        .barra-progresso {
+            background-color: #4CAF50; /* Verde vivo */
+            height: 100%; 
+            border-radius: 10px; 
+            transition: width 0.8s ease-in-out;
+        }
+        .painel-status {
+            text-align: right; 
+            margin: 0; 
+            font-size: 15px; 
+            font-weight: 600; 
+            color: #E0E0E0;
+            font-family: sans-serif;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -44,14 +74,10 @@ st.markdown("""
 # ==========================================
 # 2. CONEXÃO COM O GOOGLE PLANILHAS
 # ==========================================
-# COLE O SEU LINK DO GOOGLE PLANILHAS AQUI DENTRO DAS ASPAS
 url_google_sheets = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRXE69ipW9usXVW5msH5SPVV5CMz5tboAlWg_O-9Zdi4_WGxdB5BmTlXxdd_2OSrW6_S91J66bckSDs/pub?gid=409266791&single=true&output=csv"
 
 try:
-    # A MÁGICA ESTÁ AQUI: dtype=str impede que o Python engula os zeros à esquerda!
     df_bruto = pd.read_csv(url_google_sheets, dtype=str)
-    
-    # Limpa quebras de linha dos nomes das colunas
     df_bruto.columns = df_bruto.columns.str.replace('\n', ' ').str.replace('\r', '').str.strip()
     
     df = df_bruto.rename(columns={
@@ -62,20 +88,17 @@ try:
     
     colunas_essenciais = ['Registro', 'Titulo', 'Etapa_Atual']
     faltaram = [col for col in colunas_essenciais if col not in df.columns]
-    
     if faltaram:
-        st.warning(f"⚠️ Atenção: As colunas não bateram. Lendo: {df_bruto.columns.tolist()}")
         for col in faltaram:
             df[col] = "" 
             
-    # Força a ser string de novo, remove eventuais '.0' fantasmas e limpa espaços nas bordas
     df['Registro'] = df['Registro'].astype(str).str.replace('.0', '', regex=False).str.strip()
     df['Titulo'] = df['Titulo'].astype(str).str.strip()
     df['Etapa_Atual'] = df['Etapa_Atual'].astype(str).str.replace('.0', '', regex=False).str.strip()
 
 except Exception as e:
-    st.error(f"Erro técnico ao ler a planilha: {e}")
     df = pd.DataFrame(columns=['Registro', 'Titulo', 'Etapa_Atual'])
+
 # ==========================================
 # 3. DICIONÁRIOS E MAPAS DE PROGRESSO
 # ==========================================
@@ -135,11 +158,6 @@ setores = {
     'Outros': ['N_O18_1', 'N_O19_1', 'N_O24', 'N_O25', 'N_O26', 'N_O27']
 }
 
-cores_caixas = {
-    'Coordenador(a)': '#C8E6C9', 'NPV': '#FFF9C4', 'Juridico': '#FFCDD2',       
-    'NPI': '#BBDEFB', 'NAP': '#E1BEE7', 'Outros': '#E0E0E0'          
-}
-
 conexoes = [
     ('N_INICIO', 'N_C1'), ('N_C1', 'N_C_D1'),
     ('N_C_D1', 'N_C2', 'Sim'), ('N_C_D1', 'N_C3', 'Não'),
@@ -173,7 +191,9 @@ conexoes = [
     ('N_O26', 'N_O27')
 ]
 
-# Função para classificar as Fases e o Progresso da Barra
+# ==========================================
+# 4. ALGORITMOS DE RASTREIO E PROGRESSO
+# ==========================================
 def avaliar_status(id_etapa):
     if id_etapa in setores['Coordenador(a)']: return 20, 1
     elif id_etapa in setores['NPV']: return 40, 2
@@ -183,19 +203,46 @@ def avaliar_status(id_etapa):
         return 80, 4
     else: return 5, 1
 
+# O Algoritmo que descobre o passado do projeto para pintar de verde
+def obter_historico_concluido(etapa_atual):
+    if not etapa_atual:
+        return set()
+    
+    # Cria o caminho de trás pra frente
+    grafo_reverso = {}
+    for origem, destino, *resto in conexoes:
+        if destino not in grafo_reverso:
+            grafo_reverso[destino] = []
+        grafo_reverso[destino].append(origem)
+    
+    completados = set()
+    fila = [etapa_atual]
+    
+    while fila:
+        atual = fila.pop(0)
+        if atual not in completados:
+            completados.add(atual)
+            if atual in grafo_reverso:
+                fila.extend(grafo_reverso[atual])
+                
+    if etapa_atual in completados:
+        completados.remove(etapa_atual) # Tira a etapa atual do verde para ela ficar amarela
+        
+    return completados
+
 # ==========================================
-# 4. FUNÇÃO GERADORA DO FLUXOGRAMA VERTICAL
+# 5. FUNÇÃO GERADORA DO FLUXOGRAMA VERTICAL
 # ==========================================
 def gerar_fluxograma(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Completo')
     
-    # rankdir='TB' para vertical. nodesep/ranksep controlam espaços.
     dot.attr(rankdir='TB', splines='ortho', nodesep='0.6', ranksep='0.6')
     dot.attr('node', margin='0.1,0.05', width='0', height='0')
     
+    # Calcula as etapas que ficaram para trás
+    etapas_concluidas = obter_historico_concluido(etapa_destaque)
+    
     for nome_setor, lista_ids in setores.items():
-        cor_caixa = cores_caixas.get(nome_setor, '#FFFFFF')
-        
         for id_caixa in lista_ids:
             texto_bruto = textos.get(id_caixa, id_caixa).replace('\n', ' ')
             linhas = textwrap.wrap(texto_bruto, width=22)
@@ -209,14 +256,28 @@ def gerar_fluxograma(etapa_destaque=None):
             else:
                 texto_exibicao = texto_linhas
             
+            # === LÓGICA DE CORES DA "LINHA VISUAL" ===
             if id_caixa == 'N_INICIO':
-                dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#4CAF50', color='#2E7D32', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='24')
+                cor_fundo, cor_borda, cor_fonte = '#4CAF50', '#2E7D32', 'white'
             elif id_caixa == 'N_FIM':
-                dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor='#F44336', color='#C62828', fontcolor='white', penwidth='3', fontname='Helvetica-Bold', fontsize='24')
-            elif etapa_destaque and id_caixa == etapa_destaque:
-                dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor='#FFD700', color='#B8860B', penwidth='4', fontname='Helvetica-Bold', fontsize='22')
+                cor_fundo, cor_borda, cor_fonte = '#F44336', '#C62828', 'white'
+            elif id_caixa == etapa_destaque:
+                # ETAPA ATUAL: Amarelo Ouro Vivo
+                cor_fundo, cor_borda, cor_fonte = '#FFD700', '#B8860B', 'black'
+            elif id_caixa in etapas_concluidas:
+                # PASSADO: Tudo Verde Suave
+                cor_fundo, cor_borda, cor_fonte = '#C8E6C9', '#2E7D32', 'black'
             else:
-                dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_caixa, color='#78909C', penwidth='2', fontname='Helvetica-Bold', fontsize='18')
+                # FUTURO: Tudo Branco
+                cor_fundo, cor_borda, cor_fonte = '#FFFFFF', '#90A4AE', 'black'
+            
+            # Desenha a caixa com as cores definidas
+            if id_caixa in ['N_INICIO', 'N_FIM']:
+                dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth='3', fontname='Helvetica-Bold', fontsize='24')
+            elif id_caixa == etapa_destaque:
+                dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth='5', fontname='Helvetica-Bold', fontsize='22')
+            else:
+                dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth='2', fontname='Helvetica-Bold', fontsize='18')
 
     for conexao in conexoes:
         origem, destino = conexao[0], conexao[1]
@@ -229,19 +290,17 @@ def gerar_fluxograma(etapa_destaque=None):
     return dot
 
 # ==========================================
-# 5. ESTRUTURA DO APLICATIVO
+# 6. ESTRUTURA DO APLICATIVO EM ABAS
 # ==========================================
-# Preparando abas para o futuro
 aba_parcerias, aba_outros, aba_nap = st.tabs([
     "🤝 Acordos de Parceria", 
     "📝 Outros Contratos", 
     "⚙️ Visão Interna (NAP)"
 ])
 
-# Construindo a visão atual dentro da Aba Principal
 with aba_parcerias:
-    st.title("Sistema Integra - Rastreamento de Parcerias")
-    busca = st.text_input("Buscar Projeto (Ex: 066335 ou Nome do Projeto)")
+    # A barra de busca fica FORA do painel escuro, como na sua imagem
+    busca = st.text_input("Buscar Projeto (Ex: 066335 ou Nome do Projeto)").strip()
 
     if busca:
         projeto = df[(df['Registro'].str.contains(busca, case=False, na=False)) | 
@@ -257,7 +316,20 @@ with aba_parcerias:
             
             porcentagem, etapa_macro = avaliar_status(id_etapa)
             
-            # --- MARCA PÁGINAS LATERAL (SIDEBAR) ---
+            # --- PAINEL FIXO ESCURO NO ESTILO DA SUA IMAGEM ---
+            st.markdown(f"""
+                <div class="painel-fixo">
+                    <p class="painel-titulo">Nº {num_projeto} - {tit_projeto}</p>
+                    <div class="barra-fundo">
+                        <div class="barra-progresso" style="width: {porcentagem}%;"></div>
+                    </div>
+                    <p class="painel-status">
+                        Status: {nome_etapa.replace(chr(10), ' ')} ({porcentagem}% concluído)
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # --- MENU LATERAL (MARCA PÁGINAS MACRO) ---
             fases_nomes = [
                 "1. Submissão (Coordenador)",
                 "2. Negociação (NPV)",
@@ -266,35 +338,19 @@ with aba_parcerias:
                 "5. Concluído"
             ]
             
-            st.sidebar.markdown("### 📍 Linha do Tempo do Projeto")
-            st.sidebar.markdown(f"**Projeto:** {num_projeto}")
+            st.sidebar.markdown("### 📍 Resumo do Projeto")
+            st.sidebar.markdown(f"**Nº:** {num_projeto}")
             st.sidebar.markdown("---")
             
             for i, nome_fase in enumerate(fases_nomes, 1):
                 if i < etapa_macro:
-                    # Fase concluída (Fundo Verde)
                     st.sidebar.markdown(f"<div style='background-color:#E8F5E9; color:#2E7D32; padding:10px; border-radius:5px; margin-bottom:8px; border-left:4px solid #4CAF50;'><b>✅ {nome_fase}</b></div>", unsafe_allow_html=True)
                 elif i == etapa_macro:
-                    # Fase atual (Fundo Amarelo)
                     st.sidebar.markdown(f"<div style='background-color:#FFF9C4; color:#F57F17; padding:10px; border-radius:5px; margin-bottom:8px; border-left:4px solid #FBC02D; box-shadow: 0px 2px 5px rgba(0,0,0,0.1);'><b>⏳ {nome_fase}</b></div>", unsafe_allow_html=True)
                 else:
-                    # Fase pendente (Fundo Branco)
                     st.sidebar.markdown(f"<div style='background-color:#FFFFFF; color:#9E9E9E; padding:10px; border-radius:5px; margin-bottom:8px; border:1px solid #E0E0E0;'><b>🔒 {nome_fase}</b></div>", unsafe_allow_html=True)
 
-            # --- CABEÇALHO FIXO COM PORCENTAGEM (STICKY) ---
-            st.markdown(f"""
-                <div class="painel-fixo">
-                    <h4 style="margin: 0 0 10px 0;">Nº {num_projeto} - {tit_projeto}</h4>
-                    <div style="background-color: #E0E0E0; border-radius: 10px; width: 100%; height: 20px;">
-                        <div style="background-color: #4CAF50; width: {porcentagem}%; height: 100%; border-radius: 10px; transition: width 0.5s;"></div>
-                    </div>
-                    <p style="text-align: right; margin: 5px 0 0 0; font-size: 14px; font-weight: bold; color: var(--text-color);">
-                        Status: {nome_etapa.replace(chr(10), ' ')} ({porcentagem}% concluído)
-                    </p>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            # --- GERAR GRÁFICO ---
+            # --- GERAR GRÁFICO DA LINHA DO TEMPO ---
             grafico = gerar_fluxograma(etapa_destaque=id_etapa)
             st.graphviz_chart(grafico, use_container_width=False) 
         else:
@@ -304,7 +360,6 @@ with aba_parcerias:
         st.info("Digite um número ou título acima para buscar e acompanhar o projeto.")
         st.graphviz_chart(gerar_fluxograma(), use_container_width=False)
 
-# Deixando um esqueleto simples para as próximas telas
 with aba_outros:
     st.write("Em breve: Fluxograma de outros tipos de contrato.")
 
