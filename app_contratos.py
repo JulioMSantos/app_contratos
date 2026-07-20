@@ -45,7 +45,7 @@ st.markdown("""
 # 2. CONEXÃO COM O GOOGLE PLANILHAS
 # ==========================================
 # COLE O SEU LINK DO GOOGLE PLANILHAS AQUI DENTRO DAS ASPAS
-url_google_sheets = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRXE69ipW9usXVW5msH5SPVV5CMz5tboAlWg_O-9Zdi4_WGxdB5BmTlXxdd_2OSrW6_S91J66bckSDs/pub?output=csv"
+url_google_sheets = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRXE69ipW9usXVW5msH5SPVV5CMz5tboAlWg_O-9Zdi4_WGxdB5BmTlXxdd_2OSrW6_S91J66bckSDs/pub?gid=409266791&single=true&output=csv"
 
 try:
     # A MÁGICA ESTÁ AQUI: dtype=str impede que o Python engula os zeros à esquerda!
