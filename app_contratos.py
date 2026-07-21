@@ -10,7 +10,6 @@ st.set_page_config(layout="wide", page_title="Sistema Integra", page_icon="📊"
 # ==========================================
 st.markdown("""
     <style>
-        /* Container do Gráfico */
         [data-testid="stGraphVizChart"] {
             overflow: auto; 
             background-color: #F8F9FA; 
@@ -30,7 +29,7 @@ st.markdown("""
 # ==========================================
 # 2. CONEXÃO COM O GOOGLE PLANILHAS
 # ==========================================
-url_google_sheets = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRXE69ipW9usXVW5msH5SPVV5CMz5tboAlWg_O-9Zdi4_WGxdB5BmTlXxdd_2OSrW6_S91J66bckSDs/pub?gid=409266791&single=true&output=csv"
+url_google_sheets = "COLE_O_SEU_LINK_AQUI_ENTRE_AS_ASPAS"
 
 try:
     df_bruto = pd.read_csv(url_google_sheets, dtype=str)
@@ -160,13 +159,12 @@ def avaliar_status(id_etapa):
     else: return 5, 1
 
 def obter_historico_concluido(etapa_atual):
-    if not etapa_atual:
-        return set()
+    if not etapa_atual: return set()
     grafo_reverso = {}
     for origem, destino, *resto in conexoes:
-        if destino not in grafo_reverso:
-            grafo_reverso[destino] = []
+        if destino not in grafo_reverso: grafo_reverso[destino] = []
         grafo_reverso[destino].append(origem)
+    
     completados = set()
     fila = [etapa_atual]
     while fila:
@@ -180,7 +178,7 @@ def obter_historico_concluido(etapa_atual):
     return completados
 
 # ==========================================
-# 5. FUNÇÃO GERADORA DO FLUXOGRAMA VERTICAL
+# 5. FUNÇÃO GERADORA DO FLUXOGRAMA VERTICAL (COM O MARCA-PÁGINAS NATIVO)
 # ==========================================
 def gerar_fluxograma(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Completo')
@@ -204,6 +202,7 @@ def gerar_fluxograma(etapa_destaque=None):
             else:
                 texto_exibicao = texto_linhas
             
+            # --- DEFINIÇÃO DE CORES DAS CAIXAS ---
             if id_caixa == 'N_INICIO':
                 cor_fundo, cor_borda, cor_fonte = '#4CAF50', '#2E7D32', 'white'
             elif id_caixa == 'N_FIM':
@@ -215,13 +214,48 @@ def gerar_fluxograma(etapa_destaque=None):
             else:
                 cor_fundo, cor_borda, cor_fonte = '#FFFFFF', '#90A4AE', 'black'
             
+            # --- CRIAÇÃO DOS NÓS (CAIXAS) ---
             if id_caixa in ['N_INICIO', 'N_FIM']:
                 dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth='3', fontname='Helvetica-Bold', fontsize='24')
             elif id_caixa == etapa_destaque:
                 dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth='5', fontname='Helvetica-Bold', fontsize='22')
+                
+                # ==========================================
+                # O TRUQUE DO MARCA-PÁGINAS FÍSICO NO GRÁFICO
+                # ==========================================
+                # Criamos um pedaço da linha na ESQUERDA
+                bm_left = f"""<
+                <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="0">
+                    <TR>
+                        <TD ALIGN="RIGHT" VALIGN="MIDDLE"><FONT POINT-SIZE="16" COLOR="#D32F2F"><b>ATUAL </b></FONT></TD>
+                        <TD ALIGN="RIGHT" VALIGN="MIDDLE"><FONT POINT-SIZE="30" COLOR="#D32F2F">►</FONT></TD>
+                        <TD WIDTH="250" HEIGHT="4" BGCOLOR="#1A1C23" FIXEDSIZE="TRUE"></TD>
+                    </TR>
+                </TABLE>>"""
+                
+                # Criamos um pedaço da linha na DIREITA
+                bm_right = f"""<
+                <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="0">
+                    <TR>
+                        <TD WIDTH="250" HEIGHT="4" BGCOLOR="#1A1C23" FIXEDSIZE="TRUE"></TD>
+                        <TD ALIGN="LEFT" VALIGN="MIDDLE"><FONT POINT-SIZE="30" COLOR="#D32F2F">◄</FONT></TD>
+                        <TD ALIGN="LEFT" VALIGN="MIDDLE"><FONT POINT-SIZE="16" COLOR="#D32F2F"><b> ATUAL</b></FONT></TD>
+                    </TR>
+                </TABLE>>"""
+                
+                # Renderiza essas linhas invisivelmente
+                dot.node('BM_LEFT', bm_left, shape='none', margin='0')
+                dot.node('BM_RIGHT', bm_right, shape='none', margin='0')
+                
+                # O 'rank=same' obriga as linhas a ficarem perfeitamente nas laterais da caixa Amarela!
+                with dot.subgraph() as s:
+                    s.attr(rank='same')
+                    s.edge('BM_LEFT', id_caixa, style='invis')
+                    s.edge(id_caixa, 'BM_RIGHT', style='invis')
             else:
                 dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth='2', fontname='Helvetica-Bold', fontsize='18')
 
+    # Traça as setas normais
     for conexao in conexoes:
         origem, destino = conexao[0], conexao[1]
         cor_seta = '#90A4AE'
@@ -233,7 +267,7 @@ def gerar_fluxograma(etapa_destaque=None):
     return dot
 
 # ==========================================
-# 6. ESTRUTURA DO APLICATIVO EM ABAS
+# 6. ESTRUTURA DO APLICATIVO
 # ==========================================
 aba_parcerias, aba_outros, aba_nap = st.tabs([
     "🤝 Acordos de Parceria", 
@@ -258,19 +292,13 @@ with aba_parcerias:
             
             porcentagem, etapa_macro = avaliar_status(id_etapa)
             
-            # ==========================================
-            # A MÁGICA ACONTECE AQUI: Tudo fixo na Barra Lateral!
-            # ==========================================
+            # --- MENU LATERAL (DASHBOARD FIXO) ---
             st.sidebar.title("📊 Painel do Projeto")
             st.sidebar.markdown(f"### Nº {num_projeto}")
             st.sidebar.markdown(f"**{tit_projeto}**")
-            
-            # Barra de progresso nativa do Streamlit (Muito mais limpa e fluida)
             st.sidebar.progress(porcentagem / 100, text=f"Progresso: {porcentagem}% Concluído")
-            
             st.sidebar.markdown("---")
             
-            # --- MENU LATERAL (MARCA PÁGINAS MACRO) ---
             fases_nomes = [
                 "1. Submissão (Coordenador)",
                 "2. Negociação (NPV)",
@@ -280,7 +308,6 @@ with aba_parcerias:
             ]
             
             st.sidebar.markdown("### 📍 Linha do Tempo")
-            
             for i, nome_fase in enumerate(fases_nomes, 1):
                 if i < etapa_macro:
                     st.sidebar.markdown(f"<div style='background-color:#E8F5E9; color:#2E7D32; padding:10px; border-radius:5px; margin-bottom:8px; border-left:4px solid #4CAF50;'><b>✅ {nome_fase}</b></div>", unsafe_allow_html=True)
@@ -289,7 +316,7 @@ with aba_parcerias:
                 else:
                     st.sidebar.markdown(f"<div style='background-color:#FFFFFF; color:#9E9E9E; padding:10px; border-radius:5px; margin-bottom:8px; border:1px solid #E0E0E0;'><b>🔒 {nome_fase}</b></div>", unsafe_allow_html=True)
 
-            # --- GERAR GRÁFICO DA LINHA DO TEMPO NO CENTRO ---
+            # --- GERAR GRÁFICO (AGORA COM A LINHA CRUZANDO) ---
             grafico = gerar_fluxograma(etapa_destaque=id_etapa)
             st.graphviz_chart(grafico, use_container_width=False) 
         else:
