@@ -29,7 +29,7 @@ st.markdown("""
 # ==========================================
 # 2. CONEXÃO COM O GOOGLE PLANILHAS
 # ==========================================
-url_google_sheets = "COLE_O_SEU_LINK_AQUI_ENTRE_AS_ASPAS"
+url_google_sheets = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRXE69ipW9usXVW5msH5SPVV5CMz5tboAlWg_O-9Zdi4_WGxdB5BmTlXxdd_2OSrW6_S91J66bckSDs/pub?gid=409266791&single=true&output=csv"
 
 try:
     df_bruto = pd.read_csv(url_google_sheets, dtype=str)
