@@ -224,7 +224,7 @@ def gerar_fluxograma(etapa_destaque=None):
                 # O TRUQUE DE MESTRE: LINHA DO MARCA-PÁGINAS FININHA
                 # ==========================================
                 # Cria um nó invisível contendo apenas o texto "ATUAL"
-                dot.node('MARKER', 'ATUAL', shape='plaintext', fontcolor='#D32F2F', fontsize='18', fontname='Helvetica-Bold')
+                dot.node('MARKER', 'ETAPA ATUAL', shape='plaintext', fontcolor='#D32F2F', fontsize='18', fontname='Helvetica-Bold')
                 
                 # Força o marcador a ficar na exata mesma altura da caixa amarela
                 with dot.subgraph() as s:
