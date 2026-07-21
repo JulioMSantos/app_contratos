@@ -178,7 +178,7 @@ def obter_historico_concluido(etapa_atual):
     return completados
 
 # ==========================================
-# 5. FUNÇÃO GERADORA DO FLUXOGRAMA VERTICAL (COM O MARCA-PÁGINAS NATIVO)
+# 5. FUNÇÃO GERADORA DO FLUXOGRAMA VERTICAL
 # ==========================================
 def gerar_fluxograma(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Completo')
@@ -202,7 +202,7 @@ def gerar_fluxograma(etapa_destaque=None):
             else:
                 texto_exibicao = texto_linhas
             
-            # --- DEFINIÇÃO DE CORES DAS CAIXAS ---
+            # --- CORES ---
             if id_caixa == 'N_INICIO':
                 cor_fundo, cor_borda, cor_fonte = '#4CAF50', '#2E7D32', 'white'
             elif id_caixa == 'N_FIM':
@@ -214,48 +214,28 @@ def gerar_fluxograma(etapa_destaque=None):
             else:
                 cor_fundo, cor_borda, cor_fonte = '#FFFFFF', '#90A4AE', 'black'
             
-            # --- CRIAÇÃO DOS NÓS (CAIXAS) ---
+            # --- DESENHA CAIXAS ---
             if id_caixa in ['N_INICIO', 'N_FIM']:
                 dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth='3', fontname='Helvetica-Bold', fontsize='24')
             elif id_caixa == etapa_destaque:
                 dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth='5', fontname='Helvetica-Bold', fontsize='22')
                 
                 # ==========================================
-                # O TRUQUE DO MARCA-PÁGINAS FÍSICO NO GRÁFICO
+                # O TRUQUE DE MESTRE: LINHA DO MARCA-PÁGINAS FININHA
                 # ==========================================
-                # Criamos um pedaço da linha na ESQUERDA
-                bm_left = f"""<
-                <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="0">
-                    <TR>
-                        <TD ALIGN="RIGHT" VALIGN="MIDDLE"><FONT POINT-SIZE="16" COLOR="#D32F2F"><b>ATUAL </b></FONT></TD>
-                        <TD ALIGN="RIGHT" VALIGN="MIDDLE"><FONT POINT-SIZE="30" COLOR="#D32F2F">►</FONT></TD>
-                        <TD WIDTH="250" HEIGHT="4" BGCOLOR="#1A1C23" FIXEDSIZE="TRUE"></TD>
-                    </TR>
-                </TABLE>>"""
+                # Cria um nó invisível contendo apenas o texto "ATUAL"
+                dot.node('MARKER', 'ATUAL', shape='plaintext', fontcolor='#D32F2F', fontsize='18', fontname='Helvetica-Bold')
                 
-                # Criamos um pedaço da linha na DIREITA
-                bm_right = f"""<
-                <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="0">
-                    <TR>
-                        <TD WIDTH="250" HEIGHT="4" BGCOLOR="#1A1C23" FIXEDSIZE="TRUE"></TD>
-                        <TD ALIGN="LEFT" VALIGN="MIDDLE"><FONT POINT-SIZE="30" COLOR="#D32F2F">◄</FONT></TD>
-                        <TD ALIGN="LEFT" VALIGN="MIDDLE"><FONT POINT-SIZE="16" COLOR="#D32F2F"><b> ATUAL</b></FONT></TD>
-                    </TR>
-                </TABLE>>"""
-                
-                # Renderiza essas linhas invisivelmente
-                dot.node('BM_LEFT', bm_left, shape='none', margin='0')
-                dot.node('BM_RIGHT', bm_right, shape='none', margin='0')
-                
-                # O 'rank=same' obriga as linhas a ficarem perfeitamente nas laterais da caixa Amarela!
+                # Força o marcador a ficar na exata mesma altura da caixa amarela
                 with dot.subgraph() as s:
                     s.attr(rank='same')
-                    s.edge('BM_LEFT', id_caixa, style='invis')
-                    s.edge(id_caixa, 'BM_RIGHT', style='invis')
+                    # Cria a linha vindo do marcador para a caixa (dir='back' inverte a seta para apontar pra caixa)
+                    # minlen='2' dá um comprimento bacana na horizontal
+                    s.edge(id_caixa, 'MARKER', dir='back', color='#1A1C23', penwidth='3.0', arrowtail='vee', minlen='2')
             else:
                 dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth='2', fontname='Helvetica-Bold', fontsize='18')
 
-    # Traça as setas normais
+    # Traça setas normais
     for conexao in conexoes:
         origem, destino = conexao[0], conexao[1]
         cor_seta = '#90A4AE'
@@ -292,7 +272,6 @@ with aba_parcerias:
             
             porcentagem, etapa_macro = avaliar_status(id_etapa)
             
-            # --- MENU LATERAL (DASHBOARD FIXO) ---
             st.sidebar.title("📊 Painel do Projeto")
             st.sidebar.markdown(f"### Nº {num_projeto}")
             st.sidebar.markdown(f"**{tit_projeto}**")
@@ -316,7 +295,6 @@ with aba_parcerias:
                 else:
                     st.sidebar.markdown(f"<div style='background-color:#FFFFFF; color:#9E9E9E; padding:10px; border-radius:5px; margin-bottom:8px; border:1px solid #E0E0E0;'><b>🔒 {nome_fase}</b></div>", unsafe_allow_html=True)
 
-            # --- GERAR GRÁFICO (AGORA COM A LINHA CRUZANDO) ---
             grafico = gerar_fluxograma(etapa_destaque=id_etapa)
             st.graphviz_chart(grafico, use_container_width=False) 
         else:
