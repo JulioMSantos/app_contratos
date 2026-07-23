@@ -29,7 +29,7 @@ st.markdown("""
 # ==========================================
 # 2. CONEXÃO COM O GOOGLE PLANILHAS
 # ==========================================
-url_google_sheets = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRXE69ipW9usXVW5msH5SPVV5CMz5tboAlWg_O-9Zdi4_WGxdB5BmTlXxdd_2OSrW6_S91J66bckSDs/pub?gid=409266791&single=true&output=csv"
+url_google_sheets = "COLE_O_SEU_LINK_AQUI_ENTRE_AS_ASPAS"
 
 try:
     df_bruto = pd.read_csv(url_google_sheets, dtype=str)
@@ -147,16 +147,43 @@ conexoes = [
 ]
 
 # ==========================================
-# 4. ALGORITMOS DE RASTREIO E PROGRESSO
+# 4. ALGORITMOS DE RASTREIO E PROGRESSO (MACROFASES DO PROFESSOR)
 # ==========================================
 def avaliar_status(id_etapa):
-    if id_etapa in setores['Coordenador(a)']: return 20, 1
-    elif id_etapa in setores['NPV']: return 40, 2
-    elif id_etapa in setores['Juridico'] or id_etapa in setores['NPI']: return 60, 3
-    elif id_etapa in setores['NAP'] or id_etapa in setores['Outros']: 
-        if id_etapa in ['N_FIM', 'N_A_SEGUIR']: return 100, 5
-        return 80, 4
-    else: return 5, 1
+    """
+    Mapeia os 27 micropassos do Graphviz para as 9 macrofases do Professor.
+    Retorna a Porcentagem e o Número da Fase.
+    """
+    # 1. Negociação de projeto
+    if id_etapa in ['N_V4', 'N_V5', 'N_C6', 'N_V7', 'N_V10', 'N_V11', 'N_V10_2_2', 'N_V_D1', 'N_V_D2', 'N_V_D3', 'N_V_SEGUIR']: 
+        return 11, 1
+    # 2. Solicitação de Documentos
+    elif id_etapa in ['N_V12', 'N_C13', 'N_V14_1', 'N_V14_2', 'N_A20_1', 'N_A20_3', 'N_A_D2']: 
+        return 22, 2
+    # 3. Conferência documental
+    elif id_etapa in ['N_A8', 'N_A15_1', 'N_C15_3', 'N_A9', 'N_A_D1']: 
+        return 33, 3
+    # 4. Abertura processo PEN/SIE (Considerado o N_INICIO para coerência visual)
+    elif id_etapa in ['N_INICIO', 'N_C1', 'N_C2', 'N_C3', 'N_C_D1']: 
+        return 44, 4
+    # 5. Aprovação do projeto no colegiado competente
+    elif id_etapa in ['N_C17_2_1', 'N_A17_3']: 
+        return 55, 5
+    # 6. Aprovação PRA
+    elif id_etapa in ['N_O18_1', 'N_O19_1', 'N_O24', 'N_O25', 'N_O26', 'N_O27']: 
+        return 66, 6
+    # 7. Análise pela equipe CT&I (Jurídico e NPI)
+    elif id_etapa in ['N_J15_2_1', 'N_J15_2_2', 'N_J20_2_1', 'N_J21_2', 'N_PI16_2_1', 'N_PI18_2_1', 'N_PI19_2_1', 'N_V16_2_2', 'N_V16_2_3', 'N_V17_2_2', 'N_V18_2_2', 'N_V19_2_2', 'N_V20_2_2', 'N_J_D1', 'N_J_D2', 'N_J_D3', 'N_J_D4', 'N_V_D4']: 
+        return 77, 7
+    # 8. Assinatura contrato
+    elif id_etapa in ['N_A22_1', 'N_A23_1']: 
+        return 88, 8
+    # 9. Projeto vigente
+    elif id_etapa in ['N_FIM', 'N_A_SEGUIR']: 
+        return 100, 9
+    # Caso alguma etapa fique de fora por formatação
+    else: 
+        return 50, 5
 
 def obter_historico_concluido(etapa_atual):
     if not etapa_atual: return set()
@@ -220,17 +247,10 @@ def gerar_fluxograma(etapa_destaque=None):
             elif id_caixa == etapa_destaque:
                 dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth='5', fontname='Helvetica-Bold', fontsize='22')
                 
-                # ==========================================
-                # O TRUQUE DE MESTRE: LINHA DO MARCA-PÁGINAS FININHA
-                # ==========================================
-                # Cria um nó invisível contendo apenas o texto "ATUAL"
-                dot.node('MARKER', 'ETAPA ATUAL', shape='plaintext', fontcolor='#D32F2F', fontsize='18', fontname='Helvetica-Bold')
-                
-                # Força o marcador a ficar na exata mesma altura da caixa amarela
+                # --- SETA FINA LATERAL (MARCA PÁGINAS) ---
+                dot.node('MARKER', 'ATUAL', shape='plaintext', fontcolor='#D32F2F', fontsize='16', fontname='Helvetica-Bold')
                 with dot.subgraph() as s:
                     s.attr(rank='same')
-                    # Cria a linha vindo do marcador para a caixa (dir='back' inverte a seta para apontar pra caixa)
-                    # minlen='2' dá um comprimento bacana na horizontal
                     s.edge(id_caixa, 'MARKER', dir='back', color='#1A1C23', penwidth='3.0', arrowtail='vee', minlen='2')
             else:
                 dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth='2', fontname='Helvetica-Bold', fontsize='18')
@@ -278,12 +298,17 @@ with aba_parcerias:
             st.sidebar.progress(porcentagem / 100, text=f"Progresso: {porcentagem}% Concluído")
             st.sidebar.markdown("---")
             
+            # As 9 Macrofases exatas avaliadas pelo Professor
             fases_nomes = [
-                "1. Submissão (Coordenador)",
-                "2. Negociação (NPV)",
-                "3. Análise (Jurídico/NPI)",
-                "4. Enquadramento (NAP/PRA)",
-                "5. Concluído"
+                "1. Negociação de projeto",
+                "2. Solicitação de Documentos",
+                "3. Conferência documental",
+                "4. Abertura processo PEN/SIE",
+                "5. Aprovação do projeto no colegiado competente",
+                "6. Aprovação PRA",
+                "7. Análise pela equipe CT&I",
+                "8. Assinatura contrato",
+                "9. Projeto vigente"
             ]
             
             st.sidebar.markdown("### 📍 Linha do Tempo")
