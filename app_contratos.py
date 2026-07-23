@@ -248,7 +248,7 @@ def gerar_fluxograma(etapa_destaque=None):
                 dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth='5', fontname='Helvetica-Bold', fontsize='22')
                 
                 # --- SETA FINA LATERAL (MARCA PÁGINAS) ---
-                dot.node('MARKER', 'ATUAL', shape='plaintext', fontcolor='#D32F2F', fontsize='16', fontname='Helvetica-Bold')
+                dot.node('MARKER', 'ETAPA ATUAL', shape='plaintext', fontcolor='#D32F2F', fontsize='16', fontname='Helvetica-Bold')
                 with dot.subgraph() as s:
                     s.attr(rank='same')
                     s.edge(id_caixa, 'MARKER', dir='back', color='#1A1C23', penwidth='3.0', arrowtail='vee', minlen='2')
