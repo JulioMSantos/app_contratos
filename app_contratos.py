@@ -321,10 +321,10 @@ aba_publica, aba_nap = st.tabs(["🌎 Consulta Pública", "⚙️ Visão Interna
 with aba_publica:
     st.subheader("Rastreamento de Projetos")
     
-    # O Dropdown da Visão Pública ATUALIZADO
+    # O Dropdown da Visão Pública ATUALIZADO COM PROTOCOLO DE INTENÇÕES
     tipo_contrato = st.selectbox(
         "Selecione a modalidade do contrato:", 
-        ["Acordo de Parceria", "ACT (Em Breve)", "Contrato global (Em Breve)"]
+        ["Acordo de Parceria", "Protocolo de Intenções (Em Breve)", "ACT (Em Breve)", "Contrato global (Em Breve)"]
     )
     
     if tipo_contrato == "Acordo de Parceria":
@@ -396,7 +396,7 @@ with aba_nap:
         st.markdown("---")
         tipo_contrato_nap = st.selectbox(
             "Selecione o Dashboard Gerencial que deseja visualizar:", 
-            ["Acordos de Parceria", "ACT (Em Breve)", "Contrato global (Em Breve)"],
+            ["Acordos de Parceria", "Protocolo de Intenções (Em Breve)", "ACT (Em Breve)", "Contrato global (Em Breve)"],
             key="dropdown_interno"
         )
         
