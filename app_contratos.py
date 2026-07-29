@@ -6,7 +6,7 @@ import textwrap
 st.set_page_config(layout="wide", page_title="Sistema Integra", page_icon="📊")
 
 # ==========================================
-# 1. CSS MODERNIZADO
+# 1. CSS MODERNIZADO E CONFIGURAÇÕES VISUAIS
 # ==========================================
 st.markdown("""
     <style>
@@ -22,6 +22,10 @@ st.markdown("""
         [data-testid="stGraphVizChart"] > svg {
             max-width: 100% !important; 
             height: auto !important;
+        }
+        /* Esconde a barra de progresso nativa do Streamlit na aba administrativa para ficar mais limpo */
+        .stProgress > div > div > div > div {
+            background-color: #4CAF50;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -55,7 +59,7 @@ except Exception as e:
     df = pd.DataFrame(columns=['Registro', 'Titulo', 'Etapa_Atual'])
 
 # ==========================================
-# 3. DICIONÁRIOS E MAPAS DE PROGRESSO
+# 3. DICIONÁRIOS E ESTRUTURAS DO FLUXOGRAMA
 # ==========================================
 tradutor_etapas = {
     '1': 'N_C1', '2': 'N_C2', '3': 'N_C3', '4': 'N_V4', '5': 'N_V5',
@@ -147,43 +151,19 @@ conexoes = [
 ]
 
 # ==========================================
-# 4. ALGORITMOS DE RASTREIO E PROGRESSO (MACROFASES DO PROFESSOR)
+# 4. ALGORITMOS BASE
 # ==========================================
 def avaliar_status(id_etapa):
-    """
-    Mapeia os 27 micropassos do Graphviz para as 9 macrofases do Professor.
-    Retorna a Porcentagem e o Número da Fase.
-    """
-    # 1. Negociação de projeto
-    if id_etapa in ['N_V4', 'N_V5', 'N_C6', 'N_V7', 'N_V10', 'N_V11', 'N_V10_2_2', 'N_V_D1', 'N_V_D2', 'N_V_D3', 'N_V_SEGUIR']: 
-        return 11, 1
-    # 2. Solicitação de Documentos
-    elif id_etapa in ['N_V12', 'N_C13', 'N_V14_1', 'N_V14_2', 'N_A20_1', 'N_A20_3', 'N_A_D2']: 
-        return 22, 2
-    # 3. Conferência documental
-    elif id_etapa in ['N_A8', 'N_A15_1', 'N_C15_3', 'N_A9', 'N_A_D1']: 
-        return 33, 3
-    # 4. Abertura processo PEN/SIE (Considerado o N_INICIO para coerência visual)
-    elif id_etapa in ['N_INICIO', 'N_C1', 'N_C2', 'N_C3', 'N_C_D1']: 
-        return 44, 4
-    # 5. Aprovação do projeto no colegiado competente
-    elif id_etapa in ['N_C17_2_1', 'N_A17_3']: 
-        return 55, 5
-    # 6. Aprovação PRA
-    elif id_etapa in ['N_O18_1', 'N_O19_1', 'N_O24', 'N_O25', 'N_O26', 'N_O27']: 
-        return 66, 6
-    # 7. Análise pela equipe CT&I (Jurídico e NPI)
-    elif id_etapa in ['N_J15_2_1', 'N_J15_2_2', 'N_J20_2_1', 'N_J21_2', 'N_PI16_2_1', 'N_PI18_2_1', 'N_PI19_2_1', 'N_V16_2_2', 'N_V16_2_3', 'N_V17_2_2', 'N_V18_2_2', 'N_V19_2_2', 'N_V20_2_2', 'N_J_D1', 'N_J_D2', 'N_J_D3', 'N_J_D4', 'N_V_D4']: 
-        return 77, 7
-    # 8. Assinatura contrato
-    elif id_etapa in ['N_A22_1', 'N_A23_1']: 
-        return 88, 8
-    # 9. Projeto vigente
-    elif id_etapa in ['N_FIM', 'N_A_SEGUIR']: 
-        return 100, 9
-    # Caso alguma etapa fique de fora por formatação
-    else: 
-        return 50, 5
+    if id_etapa in ['N_V4', 'N_V5', 'N_C6', 'N_V7', 'N_V10', 'N_V11', 'N_V10_2_2', 'N_V_D1', 'N_V_D2', 'N_V_D3', 'N_V_SEGUIR']: return 11, 1
+    elif id_etapa in ['N_V12', 'N_C13', 'N_V14_1', 'N_V14_2', 'N_A20_1', 'N_A20_3', 'N_A_D2']: return 22, 2
+    elif id_etapa in ['N_A8', 'N_A15_1', 'N_C15_3', 'N_A9', 'N_A_D1']: return 33, 3
+    elif id_etapa in ['N_INICIO', 'N_C1', 'N_C2', 'N_C3', 'N_C_D1']: return 44, 4
+    elif id_etapa in ['N_C17_2_1', 'N_A17_3']: return 55, 5
+    elif id_etapa in ['N_O18_1', 'N_O19_1', 'N_O24', 'N_O25', 'N_O26', 'N_O27']: return 66, 6
+    elif id_etapa in ['N_J15_2_1', 'N_J15_2_2', 'N_J20_2_1', 'N_J21_2', 'N_PI16_2_1', 'N_PI18_2_1', 'N_PI19_2_1', 'N_V16_2_2', 'N_V16_2_3', 'N_V17_2_2', 'N_V18_2_2', 'N_V19_2_2', 'N_V20_2_2', 'N_J_D1', 'N_J_D2', 'N_J_D3', 'N_J_D4', 'N_V_D4']: return 77, 7
+    elif id_etapa in ['N_A22_1', 'N_A23_1']: return 88, 8
+    elif id_etapa in ['N_FIM', 'N_A_SEGUIR']: return 100, 9
+    else: return 50, 5
 
 def obter_historico_concluido(etapa_atual):
     if not etapa_atual: return set()
@@ -200,16 +180,14 @@ def obter_historico_concluido(etapa_atual):
             completados.add(atual)
             if atual in grafo_reverso:
                 fila.extend(grafo_reverso[atual])
-    if etapa_atual in completados:
-        completados.remove(etapa_atual)
+    if etapa_atual in completados: completados.remove(etapa_atual)
     return completados
 
 # ==========================================
-# 5. FUNÇÃO GERADORA DO FLUXOGRAMA VERTICAL
+# 5. GERADOR INDIVIDUAL (VISÃO PÚBLICA)
 # ==========================================
-def gerar_fluxograma(etapa_destaque=None):
-    dot = graphviz.Digraph(comment='Fluxograma Completo')
-    
+def gerar_fluxograma_individual(etapa_destaque=None):
+    dot = graphviz.Digraph(comment='Fluxograma Individual')
     dot.attr(rankdir='TB', splines='ortho', nodesep='0.6', ranksep='0.6')
     dot.attr('node', margin='0.1,0.05', width='0', height='0')
     
@@ -218,56 +196,116 @@ def gerar_fluxograma(etapa_destaque=None):
     for nome_setor, lista_ids in setores.items():
         for id_caixa in lista_ids:
             texto_bruto = textos.get(id_caixa, id_caixa).replace('\n', ' ')
-            linhas = textwrap.wrap(texto_bruto, width=22)
-            texto_linhas = "\n".join(linhas)
+            texto_linhas = "\n".join(textwrap.wrap(texto_bruto, width=22))
             
             formato = 'box'
             if '?' in texto_bruto: formato = 'diamond'
             
-            if id_caixa not in ['N_INICIO', 'N_FIM']:
-                texto_exibicao = f"[{nome_setor.upper()}]\n{texto_linhas}"
-            else:
-                texto_exibicao = texto_linhas
+            texto_exibicao = f"[{nome_setor.upper()}]\n{texto_linhas}" if id_caixa not in ['N_INICIO', 'N_FIM'] else texto_linhas
             
-            # --- CORES ---
-            if id_caixa == 'N_INICIO':
-                cor_fundo, cor_borda, cor_fonte = '#4CAF50', '#2E7D32', 'white'
-            elif id_caixa == 'N_FIM':
-                cor_fundo, cor_borda, cor_fonte = '#F44336', '#C62828', 'white'
-            elif id_caixa == etapa_destaque:
-                cor_fundo, cor_borda, cor_fonte = '#FFD700', '#B8860B', 'black'
-            elif id_caixa in etapas_concluidas:
-                cor_fundo, cor_borda, cor_fonte = '#C8E6C9', '#2E7D32', 'black'
-            else:
-                cor_fundo, cor_borda, cor_fonte = '#FFFFFF', '#90A4AE', 'black'
+            if id_caixa == 'N_INICIO': cor_fundo, cor_borda, cor_fonte = '#4CAF50', '#2E7D32', 'white'
+            elif id_caixa == 'N_FIM': cor_fundo, cor_borda, cor_fonte = '#F44336', '#C62828', 'white'
+            elif id_caixa == etapa_destaque: cor_fundo, cor_borda, cor_fonte = '#FFD700', '#B8860B', 'black'
+            elif id_caixa in etapas_concluidas: cor_fundo, cor_borda, cor_fonte = '#C8E6C9', '#2E7D32', 'black'
+            else: cor_fundo, cor_borda, cor_fonte = '#FFFFFF', '#90A4AE', 'black'
             
-            # --- DESENHA CAIXAS ---
             if id_caixa in ['N_INICIO', 'N_FIM']:
                 dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth='3', fontname='Helvetica-Bold', fontsize='24')
             elif id_caixa == etapa_destaque:
                 dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth='5', fontname='Helvetica-Bold', fontsize='22')
-                
-                # --- SETA FINA LATERAL (MARCA PÁGINAS) ---
-                dot.node('MARKER', 'ETAPA ATUAL', shape='plaintext', fontcolor='#D32F2F', fontsize='16', fontname='Helvetica-Bold')
+                dot.node('MARKER', 'ATUAL', shape='plaintext', fontcolor='#D32F2F', fontsize='16', fontname='Helvetica-Bold')
                 with dot.subgraph() as s:
                     s.attr(rank='same')
                     s.edge(id_caixa, 'MARKER', dir='back', color='#1A1C23', penwidth='3.0', arrowtail='vee', minlen='2')
             else:
                 dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth='2', fontname='Helvetica-Bold', fontsize='18')
 
-    # Traça setas normais
     for conexao in conexoes:
         origem, destino = conexao[0], conexao[1]
         cor_seta = '#90A4AE'
-        if len(conexao) == 3:
-            dot.edge(origem, destino, label=f" {conexao[2]} ", fontsize='16', fontname='Helvetica-Bold', fontcolor='#1976D2', color=cor_seta, penwidth='2.0')
-        else:
-            dot.edge(origem, destino, color=cor_seta, penwidth='2.0')
+        if len(conexao) == 3: dot.edge(origem, destino, label=f" {conexao[2]} ", fontsize='16', fontname='Helvetica-Bold', fontcolor='#1976D2', color=cor_seta, penwidth='2.0')
+        else: dot.edge(origem, destino, color=cor_seta, penwidth='2.0')
 
     return dot
 
 # ==========================================
-# 6. ESTRUTURA DO APLICATIVO
+# 6. GERADOR GERAL (VISÃO INTERNA NAP)
+# ==========================================
+def gerar_fluxograma_geral(df_dados):
+    dot = graphviz.Digraph(comment='Fluxograma Administrativo')
+    dot.attr(rankdir='TB', splines='ortho', nodesep='0.8', ranksep='0.8')
+    dot.attr('node', margin='0.1,0.05', width='0', height='0')
+    
+    # Agrupa todos os projetos pela sua etapa atual
+    projetos_na_etapa = {}
+    for index, row in df_dados.iterrows():
+        etapa_bruta = str(row['Etapa_Atual']).strip().replace('.0', '')
+        reg = str(row['Registro']).replace('.0', '')
+        if not reg or reg == 'nan': continue
+        
+        id_et = tradutor_etapas.get(etapa_bruta, etapa_bruta)
+        if id_et not in projetos_na_etapa:
+            projetos_na_etapa[id_et] = []
+        projetos_na_etapa[id_et].append(reg)
+
+    for nome_setor, lista_ids in setores.items():
+        for id_caixa in lista_ids:
+            texto_bruto = textos.get(id_caixa, id_caixa).replace('\n', ' ')
+            texto_linhas = "\n".join(textwrap.wrap(texto_bruto, width=22))
+            
+            formato = 'box'
+            if '?' in texto_bruto: formato = 'diamond'
+            texto_exibicao = f"[{nome_setor.upper()}]\n{texto_linhas}" if id_caixa not in ['N_INICIO', 'N_FIM'] else texto_linhas
+            
+            # Cores Base para a visão geral
+            cor_fundo, cor_borda, cor_fonte = '#FFFFFF', '#90A4AE', 'black'
+            penwidth = '2'
+            
+            if id_caixa == 'N_INICIO': cor_fundo, cor_borda, cor_fonte = '#4CAF50', '#2E7D32', 'white'
+            elif id_caixa == 'N_FIM': cor_fundo, cor_borda, cor_fonte = '#F44336', '#C62828', 'white'
+            
+            # Se houver projetos nesta caixa, a borda fica vermelha e grossa
+            if id_caixa in projetos_na_etapa:
+                cor_borda = '#D32F2F'
+                penwidth = '4'
+            
+            # Desenha a caixa principal
+            dot.node(id_caixa, texto_exibicao, shape=formato if id_caixa not in ['N_INICIO', 'N_FIM'] else 'circle', style='filled, rounded' if id_caixa not in ['N_INICIO', 'N_FIM'] else 'filled', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth=penwidth, fontname='Helvetica-Bold', fontsize='18' if id_caixa not in ['N_INICIO', 'N_FIM'] else '24')
+
+            # Renderiza as "Etiquetas" laterais (Os Múltiplos Marca-Páginas)
+            if id_caixa in projetos_na_etapa:
+                lista_prjs = projetos_na_etapa[id_caixa]
+                
+                # Monta a tabela HTML com os números dos projetos
+                linhas_html = ""
+                for prj in lista_prjs:
+                    linhas_html += f'<TR><TD BGCOLOR="#FFEBEE" BORDER="1" COLOR="#D32F2F" ALIGN="CENTER" PORT="{prj}"><FONT POINT-SIZE="14" COLOR="#C62828"><b>{prj}</b></FONT></TD></TR>'
+                
+                marker_html = f"""<
+                <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="2" CELLPADDING="4">
+                    <TR><TD ALIGN="CENTER"><FONT COLOR="#D32F2F" POINT-SIZE="11"><b>PROJETOS AQUI:</b></FONT></TD></TR>
+                    {linhas_html}
+                </TABLE>>"""
+                
+                nome_marker = f'MARKER_{id_caixa}'
+                dot.node(nome_marker, marker_html, shape='plaintext')
+                
+                # Gruda o marcador na caixa
+                with dot.subgraph() as s:
+                    s.attr(rank='same')
+                    s.edge(id_caixa, nome_marker, dir='back', color='#D32F2F', penwidth='2.5', arrowtail='vee', minlen='1')
+
+    # Traça as setas base do fluxo
+    for conexao in conexoes:
+        origem, destino = conexao[0], conexao[1]
+        cor_seta = '#B0BEC5' # Seta mais clara na visão geral para destacar os projetos
+        if len(conexao) == 3: dot.edge(origem, destino, label=f" {conexao[2]} ", fontsize='14', fontname='Helvetica-Bold', fontcolor='#1976D2', color=cor_seta, penwidth='1.5')
+        else: dot.edge(origem, destino, color=cor_seta, penwidth='1.5')
+
+    return dot
+
+# ==========================================
+# 7. ESTRUTURA DO APLICATIVO
 # ==========================================
 aba_parcerias, aba_outros, aba_nap = st.tabs([
     "🤝 Acordos de Parceria", 
@@ -275,6 +313,7 @@ aba_parcerias, aba_outros, aba_nap = st.tabs([
     "⚙️ Visão Interna (NAP)"
 ])
 
+# ----------------- ABA PÚBLICA -----------------
 with aba_parcerias:
     busca = st.text_input("Buscar Projeto (Ex: 066335 ou Nome do Projeto)").strip()
 
@@ -298,7 +337,6 @@ with aba_parcerias:
             st.sidebar.progress(porcentagem / 100, text=f"Progresso: {porcentagem}% Concluído")
             st.sidebar.markdown("---")
             
-            # As 9 Macrofases exatas avaliadas pelo Professor
             fases_nomes = [
                 "1. Negociação de projeto",
                 "2. Solicitação de Documentos",
@@ -320,17 +358,39 @@ with aba_parcerias:
                 else:
                     st.sidebar.markdown(f"<div style='background-color:#FFFFFF; color:#9E9E9E; padding:10px; border-radius:5px; margin-bottom:8px; border:1px solid #E0E0E0;'><b>🔒 {nome_fase}</b></div>", unsafe_allow_html=True)
 
-            grafico = gerar_fluxograma(etapa_destaque=id_etapa)
+            grafico = gerar_fluxograma_individual(etapa_destaque=id_etapa)
             st.graphviz_chart(grafico, use_container_width=False) 
         else:
             st.warning("Projeto não encontrado. Verifique se o nome ou número de registro estão corretos.")
-            st.graphviz_chart(gerar_fluxograma(), use_container_width=False)
+            st.graphviz_chart(gerar_fluxograma_individual(), use_container_width=False)
     else:
         st.info("Digite um número ou título acima para buscar e acompanhar o projeto.")
-        st.graphviz_chart(gerar_fluxograma(), use_container_width=False)
+        st.graphviz_chart(gerar_fluxograma_individual(), use_container_width=False)
 
 with aba_outros:
     st.write("Em breve: Fluxograma de outros tipos de contrato.")
 
+# ----------------- ABA CONFIDENCIAL (NAP) -----------------
 with aba_nap:
-    st.write("Em breve: Painel administrativo para acompanhamento geral do NAP.")
+    st.subheader("Painel de Controle de Parcerias (Visão Macro)")
+    
+    # Sistema de Proteção por Senha
+    senha_digitada = st.text_input("🔑 Digite a senha de acesso (NAP):", type="password")
+    
+    # A SENHA ESTÁ AQUI (Você pode mudar para o que quiser)
+    if senha_digitada == "nap2026":
+        st.success("Acesso Liberado!")
+        
+        # Como no momento estamos focando em AP, vamos renderizar todos os projetos da base.
+        # Futuramente, podemos filtrar aqui: df_ap = df[df['Tipo'] == 'Acordo de Parceria']
+        total_projetos = len(df[df['Registro'] != ''])
+        st.write(f"Monitorando **{total_projetos}** projetos simultaneamente.")
+        
+        # Gera o fluxograma com todas as etiquetas
+        grafico_macro = gerar_fluxograma_geral(df)
+        st.graphviz_chart(grafico_macro, use_container_width=False)
+        
+    elif senha_digitada != "":
+        st.error("Senha incorreta. Acesso negado.")
+    else:
+        st.info("Área restrita à equipe interna.")
