@@ -313,16 +313,20 @@ def gerar_fluxograma_geral(df_dados):
     return dot
 
 # ==========================================
+# ==========================================
 # 7. ESTRUTURA DO APLICATIVO EM ABAS
 # ==========================================
-# Em breve, a aba "Acordos de Parceria" se tornará "Consulta Pública" e terá um menu suspenso dentro!
 aba_publica, aba_nap = st.tabs(["🌎 Consulta Pública", "⚙️ Visão Interna (Equipe NAP)"])
 
+# ----------------- ABA PÚBLICA -----------------
 with aba_publica:
     st.subheader("Rastreamento de Projetos")
     
-    # Simulação do Dropdown futuro para evitar o "monte de abas"
-    tipo_contrato = st.selectbox("Selecione a modalidade do contrato:", ["Acordo de Parceria", "Prestação de Serviço (Em Breve)", "Convênio (Em Breve)"])
+    # O Dropdown da Visão Pública
+    tipo_contrato = st.selectbox(
+        "Selecione a modalidade do contrato:", 
+        ["Acordo de Parceria", "Prestação de Serviço (Em Breve)", "Convênio (Em Breve)"]
+    )
     
     if tipo_contrato == "Acordo de Parceria":
         busca = st.text_input("Buscar Projeto (Ex: 066335 ou Nome do Projeto)").strip()
@@ -337,7 +341,6 @@ with aba_publica:
                 etapa_bruta = str(projeto.iloc[0]['Etapa_Atual']).strip().replace('.0', '')
                 
                 id_etapa = tradutor_etapas.get(etapa_bruta, etapa_bruta)
-                
                 porcentagem, etapa_macro = avaliar_status(id_etapa)
                 
                 st.sidebar.title("📊 Painel do Projeto")
@@ -367,9 +370,12 @@ with aba_publica:
             else:
                 st.warning("Projeto não encontrado.")
                 st.graphviz_chart(gerar_fluxograma_individual(), use_container_width=False)
+    else:
+        st.info(f"O módulo público de {tipo_contrato} estará disponível em breve.")
 
+# ----------------- ABA CONFIDENCIAL (NAP) -----------------
 with aba_nap:
-    st.subheader("Painel de Gestão - Acordos de Parceria")
+    st.subheader("Painel de Gestão de Contratos")
     
     # Lógica da Senha que Desaparece
     if not st.session_state['nap_autenticado']:
@@ -377,19 +383,33 @@ with aba_nap:
         
         if senha_digitada == "nap2026":
             st.session_state['nap_autenticado'] = True
-            st.rerun() # Atualiza a página instantaneamente
+            st.rerun() # Atualiza a página e some com a barra de senha
         elif senha_digitada != "":
             st.error("Senha incorreta. Acesso negado.")
             
-    else: # Se já estiver autenticado (Senha validada)
+    else: 
+        # A SENHA FOI INSERIDA. O MENU INTERNO APARECE AQUI:
         col1, col2 = st.columns([8, 2])
         col1.success("Acesso Liberado! Visão administrativa ativa.")
         if col2.button("🔒 Bloquear Painel"):
             st.session_state['nap_autenticado'] = False
             st.rerun()
             
-        total_projetos = len(df[df['Registro'] != ''])
-        st.write(f"Monitorando **{total_projetos}** projetos simultaneamente.")
+        # --- O DROPDOWN DA VISÃO INTERNA ---
+        st.markdown("---")
+        tipo_contrato_nap = st.selectbox(
+            "Selecione o Dashboard Gerencial que deseja visualizar:", 
+            ["Acordos de Parceria", "Prestações de Serviço (Em Breve)", "Convênios (Em Breve)"],
+            key="dropdown_interno"
+        )
         
-        grafico_macro = gerar_fluxograma_geral(df)
-        st.graphviz_chart(grafico_macro, use_container_width=False)
+        # Carrega o dashboard dependendo da escolha do NAP
+        if tipo_contrato_nap == "Acordos de Parceria":
+            total_projetos = len(df[df['Registro'] != ''])
+            st.write(f"Monitorando **{total_projetos}** projetos de Acordos de Parceria simultaneamente.")
+            
+            grafico_macro = gerar_fluxograma_geral(df)
+            st.graphviz_chart(grafico_macro, use_container_width=False)
+            
+        else:
+            st.info(f"🚧 O painel gerencial interno para {tipo_contrato_nap} está em desenvolvimento.")
