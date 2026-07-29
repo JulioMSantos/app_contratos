@@ -5,8 +5,12 @@ import textwrap
 
 st.set_page_config(layout="wide", page_title="Sistema Integra", page_icon="📊")
 
+# Inicializa a "Memória" do sistema para a senha do NAP
+if 'nap_autenticado' not in st.session_state:
+    st.session_state['nap_autenticado'] = False
+
 # ==========================================
-# 1. CSS MODERNIZADO E CONFIGURAÇÕES VISUAIS
+# 1. CSS MODERNIZADO
 # ==========================================
 st.markdown("""
     <style>
@@ -23,7 +27,6 @@ st.markdown("""
             max-width: 100% !important; 
             height: auto !important;
         }
-        /* Esconde a barra de progresso nativa do Streamlit na aba administrativa para ficar mais limpo */
         .stProgress > div > div > div > div {
             background-color: #4CAF50;
         }
@@ -39,13 +42,15 @@ try:
     df_bruto = pd.read_csv(url_google_sheets, dtype=str)
     df_bruto.columns = df_bruto.columns.str.replace('\n', ' ').str.replace('\r', '').str.strip()
     
+    # Adicionamos a busca pela coluna do Coordenador
     df = df_bruto.rename(columns={
         'Registro Portal de Projetos': 'Registro',
         'Projeto/Título': 'Titulo',
-        'Etapa Atual': 'Etapa_Atual' 
+        'Etapa Atual': 'Etapa_Atual',
+        'Coordenador': 'Coordenador' # Se na sua planilha estiver diferente (Ex: 'Coordenador(a)'), mude aqui a primeira palavra
     })
     
-    colunas_essenciais = ['Registro', 'Titulo', 'Etapa_Atual']
+    colunas_essenciais = ['Registro', 'Titulo', 'Etapa_Atual', 'Coordenador']
     faltaram = [col for col in colunas_essenciais if col not in df.columns]
     if faltaram:
         for col in faltaram:
@@ -54,12 +59,13 @@ try:
     df['Registro'] = df['Registro'].astype(str).str.replace('.0', '', regex=False).str.strip()
     df['Titulo'] = df['Titulo'].astype(str).str.strip()
     df['Etapa_Atual'] = df['Etapa_Atual'].astype(str).str.replace('.0', '', regex=False).str.strip()
+    df['Coordenador'] = df['Coordenador'].astype(str).str.strip()
 
 except Exception as e:
-    df = pd.DataFrame(columns=['Registro', 'Titulo', 'Etapa_Atual'])
+    df = pd.DataFrame(columns=['Registro', 'Titulo', 'Etapa_Atual', 'Coordenador'])
 
 # ==========================================
-# 3. DICIONÁRIOS E ESTRUTURAS DO FLUXOGRAMA
+# 3. DICIONÁRIOS DO FLUXOGRAMA
 # ==========================================
 tradutor_etapas = {
     '1': 'N_C1', '2': 'N_C2', '3': 'N_C3', '4': 'N_V4', '5': 'N_V5',
@@ -236,17 +242,25 @@ def gerar_fluxograma_geral(df_dados):
     dot.attr(rankdir='TB', splines='ortho', nodesep='0.8', ranksep='0.8')
     dot.attr('node', margin='0.1,0.05', width='0', height='0')
     
-    # Agrupa todos os projetos pela sua etapa atual
     projetos_na_etapa = {}
     for index, row in df_dados.iterrows():
         etapa_bruta = str(row['Etapa_Atual']).strip().replace('.0', '')
         reg = str(row['Registro']).replace('.0', '')
+        
+        # Pega o Coordenador (trata casos vazios ou 'nan')
+        coord = str(row['Coordenador']).strip()
+        if coord.lower() == 'nan' or coord == '': 
+            coord = 'Sem Nome'
+            
         if not reg or reg == 'nan': continue
         
         id_et = tradutor_etapas.get(etapa_bruta, etapa_bruta)
         if id_et not in projetos_na_etapa:
             projetos_na_etapa[id_et] = []
-        projetos_na_etapa[id_et].append(reg)
+            
+        # O texto do Marca-Páginas agora é "Número - Coordenador"
+        texto_etiqueta = f"{reg} - {coord}"
+        projetos_na_etapa[id_et].append(texto_etiqueta)
 
     for nome_setor, lista_ids in setores.items():
         for id_caixa in lista_ids:
@@ -257,140 +271,125 @@ def gerar_fluxograma_geral(df_dados):
             if '?' in texto_bruto: formato = 'diamond'
             texto_exibicao = f"[{nome_setor.upper()}]\n{texto_linhas}" if id_caixa not in ['N_INICIO', 'N_FIM'] else texto_linhas
             
-            # Cores Base para a visão geral
             cor_fundo, cor_borda, cor_fonte = '#FFFFFF', '#90A4AE', 'black'
             penwidth = '2'
             
             if id_caixa == 'N_INICIO': cor_fundo, cor_borda, cor_fonte = '#4CAF50', '#2E7D32', 'white'
             elif id_caixa == 'N_FIM': cor_fundo, cor_borda, cor_fonte = '#F44336', '#C62828', 'white'
             
-            # Se houver projetos nesta caixa, a borda fica vermelha e grossa
             if id_caixa in projetos_na_etapa:
                 cor_borda = '#D32F2F'
                 penwidth = '4'
             
-            # Desenha a caixa principal
             dot.node(id_caixa, texto_exibicao, shape=formato if id_caixa not in ['N_INICIO', 'N_FIM'] else 'circle', style='filled, rounded' if id_caixa not in ['N_INICIO', 'N_FIM'] else 'filled', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth=penwidth, fontname='Helvetica-Bold', fontsize='18' if id_caixa not in ['N_INICIO', 'N_FIM'] else '24')
 
-            # Renderiza as "Etiquetas" laterais (Os Múltiplos Marca-Páginas)
             if id_caixa in projetos_na_etapa:
                 lista_prjs = projetos_na_etapa[id_caixa]
                 
-                # Monta a tabela HTML com os números dos projetos
                 linhas_html = ""
                 for prj in lista_prjs:
-                    linhas_html += f'<TR><TD BGCOLOR="#FFEBEE" BORDER="1" COLOR="#D32F2F" ALIGN="CENTER" PORT="{prj}"><FONT POINT-SIZE="14" COLOR="#C62828"><b>{prj}</b></FONT></TD></TR>'
+                    # Fonte 12 para garantir que "000000 - Nome Longo" caiba de forma elegante
+                    linhas_html += f'<TR><TD BGCOLOR="#FFEBEE" BORDER="1" COLOR="#D32F2F" ALIGN="LEFT" PORT="{prj}"><FONT POINT-SIZE="12" COLOR="#C62828"><b>{prj}</b></FONT></TD></TR>'
                 
                 marker_html = f"""<
                 <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="2" CELLPADDING="4">
-                    <TR><TD ALIGN="CENTER"><FONT COLOR="#D32F2F" POINT-SIZE="11"><b>PROJETOS AQUI:</b></FONT></TD></TR>
+                    <TR><TD ALIGN="CENTER"><FONT COLOR="#D32F2F" POINT-SIZE="11"><b>PROJETOS NESTA ETAPA:</b></FONT></TD></TR>
                     {linhas_html}
                 </TABLE>>"""
                 
                 nome_marker = f'MARKER_{id_caixa}'
                 dot.node(nome_marker, marker_html, shape='plaintext')
                 
-                # Gruda o marcador na caixa
                 with dot.subgraph() as s:
                     s.attr(rank='same')
                     s.edge(id_caixa, nome_marker, dir='back', color='#D32F2F', penwidth='2.5', arrowtail='vee', minlen='1')
 
-    # Traça as setas base do fluxo
     for conexao in conexoes:
         origem, destino = conexao[0], conexao[1]
-        cor_seta = '#B0BEC5' # Seta mais clara na visão geral para destacar os projetos
+        cor_seta = '#B0BEC5'
         if len(conexao) == 3: dot.edge(origem, destino, label=f" {conexao[2]} ", fontsize='14', fontname='Helvetica-Bold', fontcolor='#1976D2', color=cor_seta, penwidth='1.5')
         else: dot.edge(origem, destino, color=cor_seta, penwidth='1.5')
 
     return dot
 
 # ==========================================
-# 7. ESTRUTURA DO APLICATIVO
+# 7. ESTRUTURA DO APLICATIVO EM ABAS
 # ==========================================
-aba_parcerias, aba_outros, aba_nap = st.tabs([
-    "🤝 Acordos de Parceria", 
-    "📝 Outros Contratos", 
-    "⚙️ Visão Interna (NAP)"
-])
+# Em breve, a aba "Acordos de Parceria" se tornará "Consulta Pública" e terá um menu suspenso dentro!
+aba_publica, aba_nap = st.tabs(["🌎 Consulta Pública", "⚙️ Visão Interna (Equipe NAP)"])
 
-# ----------------- ABA PÚBLICA -----------------
-with aba_parcerias:
-    busca = st.text_input("Buscar Projeto (Ex: 066335 ou Nome do Projeto)").strip()
+with aba_publica:
+    st.subheader("Rastreamento de Projetos")
+    
+    # Simulação do Dropdown futuro para evitar o "monte de abas"
+    tipo_contrato = st.selectbox("Selecione a modalidade do contrato:", ["Acordo de Parceria", "Prestação de Serviço (Em Breve)", "Convênio (Em Breve)"])
+    
+    if tipo_contrato == "Acordo de Parceria":
+        busca = st.text_input("Buscar Projeto (Ex: 066335 ou Nome do Projeto)").strip()
 
-    if busca:
-        projeto = df[(df['Registro'].str.contains(busca, case=False, na=False)) | 
-                     (df['Titulo'].str.contains(busca, case=False, na=False))]
-                     
-        if not projeto.empty:
-            num_projeto = str(projeto.iloc[0]['Registro']).replace('.0', '')
-            tit_projeto = str(projeto.iloc[0]['Titulo'])
-            etapa_bruta = str(projeto.iloc[0]['Etapa_Atual']).strip().replace('.0', '')
-            
-            id_etapa = tradutor_etapas.get(etapa_bruta, etapa_bruta)
-            nome_etapa = textos.get(id_etapa, etapa_bruta)
-            
-            porcentagem, etapa_macro = avaliar_status(id_etapa)
-            
-            st.sidebar.title("📊 Painel do Projeto")
-            st.sidebar.markdown(f"### Nº {num_projeto}")
-            st.sidebar.markdown(f"**{tit_projeto}**")
-            st.sidebar.progress(porcentagem / 100, text=f"Progresso: {porcentagem}% Concluído")
-            st.sidebar.markdown("---")
-            
-            fases_nomes = [
-                "1. Negociação de projeto",
-                "2. Solicitação de Documentos",
-                "3. Conferência documental",
-                "4. Abertura processo PEN/SIE",
-                "5. Aprovação do projeto no colegiado competente",
-                "6. Aprovação PRA",
-                "7. Análise pela equipe CT&I",
-                "8. Assinatura contrato",
-                "9. Projeto vigente"
-            ]
-            
-            st.sidebar.markdown("### 📍 Linha do Tempo")
-            for i, nome_fase in enumerate(fases_nomes, 1):
-                if i < etapa_macro:
-                    st.sidebar.markdown(f"<div style='background-color:#E8F5E9; color:#2E7D32; padding:10px; border-radius:5px; margin-bottom:8px; border-left:4px solid #4CAF50;'><b>✅ {nome_fase}</b></div>", unsafe_allow_html=True)
-                elif i == etapa_macro:
-                    st.sidebar.markdown(f"<div style='background-color:#FFF9C4; color:#F57F17; padding:10px; border-radius:5px; margin-bottom:8px; border-left:4px solid #FBC02D; box-shadow: 0px 2px 5px rgba(0,0,0,0.1);'><b>⏳ {nome_fase}</b></div>", unsafe_allow_html=True)
-                else:
-                    st.sidebar.markdown(f"<div style='background-color:#FFFFFF; color:#9E9E9E; padding:10px; border-radius:5px; margin-bottom:8px; border:1px solid #E0E0E0;'><b>🔒 {nome_fase}</b></div>", unsafe_allow_html=True)
+        if busca:
+            projeto = df[(df['Registro'].str.contains(busca, case=False, na=False)) | 
+                         (df['Titulo'].str.contains(busca, case=False, na=False))]
+                         
+            if not projeto.empty:
+                num_projeto = str(projeto.iloc[0]['Registro']).replace('.0', '')
+                tit_projeto = str(projeto.iloc[0]['Titulo'])
+                etapa_bruta = str(projeto.iloc[0]['Etapa_Atual']).strip().replace('.0', '')
+                
+                id_etapa = tradutor_etapas.get(etapa_bruta, etapa_bruta)
+                
+                porcentagem, etapa_macro = avaliar_status(id_etapa)
+                
+                st.sidebar.title("📊 Painel do Projeto")
+                st.sidebar.markdown(f"### Nº {num_projeto}")
+                st.sidebar.markdown(f"**{tit_projeto}**")
+                st.sidebar.progress(porcentagem / 100, text=f"Progresso: {porcentagem}% Concluído")
+                st.sidebar.markdown("---")
+                
+                fases_nomes = [
+                    "1. Negociação de projeto", "2. Solicitação de Documentos",
+                    "3. Conferência documental", "4. Abertura processo PEN/SIE",
+                    "5. Aprovação do projeto no colegiado", "6. Aprovação PRA",
+                    "7. Análise pela equipe CT&I", "8. Assinatura contrato", "9. Projeto vigente"
+                ]
+                
+                st.sidebar.markdown("### 📍 Linha do Tempo")
+                for i, nome_fase in enumerate(fases_nomes, 1):
+                    if i < etapa_macro:
+                        st.sidebar.markdown(f"<div style='background-color:#E8F5E9; color:#2E7D32; padding:10px; border-radius:5px; margin-bottom:8px; border-left:4px solid #4CAF50;'><b>✅ {nome_fase}</b></div>", unsafe_allow_html=True)
+                    elif i == etapa_macro:
+                        st.sidebar.markdown(f"<div style='background-color:#FFF9C4; color:#F57F17; padding:10px; border-radius:5px; margin-bottom:8px; border-left:4px solid #FBC02D; box-shadow: 0px 2px 5px rgba(0,0,0,0.1);'><b>⏳ {nome_fase}</b></div>", unsafe_allow_html=True)
+                    else:
+                        st.sidebar.markdown(f"<div style='background-color:#FFFFFF; color:#9E9E9E; padding:10px; border-radius:5px; margin-bottom:8px; border:1px solid #E0E0E0;'><b>🔒 {nome_fase}</b></div>", unsafe_allow_html=True)
 
-            grafico = gerar_fluxograma_individual(etapa_destaque=id_etapa)
-            st.graphviz_chart(grafico, use_container_width=False) 
-        else:
-            st.warning("Projeto não encontrado. Verifique se o nome ou número de registro estão corretos.")
-            st.graphviz_chart(gerar_fluxograma_individual(), use_container_width=False)
-    else:
-        st.info("Digite um número ou título acima para buscar e acompanhar o projeto.")
-        st.graphviz_chart(gerar_fluxograma_individual(), use_container_width=False)
+                grafico = gerar_fluxograma_individual(etapa_destaque=id_etapa)
+                st.graphviz_chart(grafico, use_container_width=False) 
+            else:
+                st.warning("Projeto não encontrado.")
+                st.graphviz_chart(gerar_fluxograma_individual(), use_container_width=False)
 
-with aba_outros:
-    st.write("Em breve: Fluxograma de outros tipos de contrato.")
-
-# ----------------- ABA CONFIDENCIAL (NAP) -----------------
 with aba_nap:
-    st.subheader("Painel de Controle de Parcerias (Visão Macro)")
+    st.subheader("Painel de Gestão - Acordos de Parceria")
     
-    # Sistema de Proteção por Senha
-    senha_digitada = st.text_input("🔑 Digite a senha de acesso (NAP):", type="password")
-    
-    # A SENHA ESTÁ AQUI (Você pode mudar para o que quiser)
-    if senha_digitada == "nap2026":
-        st.success("Acesso Liberado!")
+    # Lógica da Senha que Desaparece
+    if not st.session_state['nap_autenticado']:
+        senha_digitada = st.text_input("🔑 Digite a senha de acesso (NAP):", type="password")
         
-        # Como no momento estamos focando em AP, vamos renderizar todos os projetos da base.
-        # Futuramente, podemos filtrar aqui: df_ap = df[df['Tipo'] == 'Acordo de Parceria']
+        if senha_digitada == "nap2026":
+            st.session_state['nap_autenticado'] = True
+            st.rerun() # Atualiza a página instantaneamente
+        elif senha_digitada != "":
+            st.error("Senha incorreta. Acesso negado.")
+            
+    else: # Se já estiver autenticado (Senha validada)
+        col1, col2 = st.columns([8, 2])
+        col1.success("Acesso Liberado! Visão administrativa ativa.")
+        if col2.button("🔒 Bloquear Painel"):
+            st.session_state['nap_autenticado'] = False
+            st.rerun()
+            
         total_projetos = len(df[df['Registro'] != ''])
         st.write(f"Monitorando **{total_projetos}** projetos simultaneamente.")
         
-        # Gera o fluxograma com todas as etiquetas
         grafico_macro = gerar_fluxograma_geral(df)
         st.graphviz_chart(grafico_macro, use_container_width=False)
-        
-    elif senha_digitada != "":
-        st.error("Senha incorreta. Acesso negado.")
-    else:
-        st.info("Área restrita à equipe interna.")
