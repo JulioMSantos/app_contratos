@@ -10,7 +10,7 @@ if 'nap_autenticado' not in st.session_state:
     st.session_state['nap_autenticado'] = False
 
 # ==========================================
-# 1. CSS MODERNIZADO
+# 1. CSS MODERNIZADO E CONFIGURAÇÕES VISUAIS
 # ==========================================
 st.markdown("""
     <style>
@@ -42,12 +42,11 @@ try:
     df_bruto = pd.read_csv(url_google_sheets, dtype=str)
     df_bruto.columns = df_bruto.columns.str.replace('\n', ' ').str.replace('\r', '').str.strip()
     
-    # Adicionamos a busca pela coluna do Coordenador
     df = df_bruto.rename(columns={
         'Registro Portal de Projetos': 'Registro',
         'Projeto/Título': 'Titulo',
         'Etapa Atual': 'Etapa_Atual',
-        'Coordenador': 'Coordenador' # Se na sua planilha estiver diferente (Ex: 'Coordenador(a)'), mude aqui a primeira palavra
+        'Coordenador': 'Coordenador' 
     })
     
     colunas_essenciais = ['Registro', 'Titulo', 'Etapa_Atual', 'Coordenador']
@@ -190,7 +189,7 @@ def obter_historico_concluido(etapa_atual):
     return completados
 
 # ==========================================
-# 5. GERADOR INDIVIDUAL (VISÃO PÚBLICA)
+# 5. GERADORES DE GRÁFICOS (PRINCIPAL, GERAL E MINIMAPA)
 # ==========================================
 def gerar_fluxograma_individual(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Individual')
@@ -219,7 +218,7 @@ def gerar_fluxograma_individual(etapa_destaque=None):
                 dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth='3', fontname='Helvetica-Bold', fontsize='24')
             elif id_caixa == etapa_destaque:
                 dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth='5', fontname='Helvetica-Bold', fontsize='22')
-                dot.node('MARKER', 'ATUAL', shape='plaintext', fontcolor='#D32F2F', fontsize='16', fontname='Helvetica-Bold')
+                dot.node('MARKER', 'ETAPA ATUAL', shape='plaintext', fontcolor='#D32F2F', fontsize='16', fontname='Helvetica-Bold')
                 with dot.subgraph() as s:
                     s.attr(rank='same')
                     s.edge(id_caixa, 'MARKER', dir='back', color='#1A1C23', penwidth='3.0', arrowtail='vee', minlen='2')
@@ -234,9 +233,6 @@ def gerar_fluxograma_individual(etapa_destaque=None):
 
     return dot
 
-# ==========================================
-# 6. GERADOR GERAL (VISÃO INTERNA NAP)
-# ==========================================
 def gerar_fluxograma_geral(df_dados):
     dot = graphviz.Digraph(comment='Fluxograma Administrativo')
     dot.attr(rankdir='TB', splines='ortho', nodesep='0.8', ranksep='0.8')
@@ -246,19 +242,14 @@ def gerar_fluxograma_geral(df_dados):
     for index, row in df_dados.iterrows():
         etapa_bruta = str(row['Etapa_Atual']).strip().replace('.0', '')
         reg = str(row['Registro']).replace('.0', '')
-        
-        # Pega o Coordenador (trata casos vazios ou 'nan')
         coord = str(row['Coordenador']).strip()
-        if coord.lower() == 'nan' or coord == '': 
-            coord = 'Sem Nome'
-            
+        if coord.lower() == 'nan' or coord == '': coord = 'Sem Nome'
         if not reg or reg == 'nan': continue
         
         id_et = tradutor_etapas.get(etapa_bruta, etapa_bruta)
         if id_et not in projetos_na_etapa:
             projetos_na_etapa[id_et] = []
             
-        # O texto do Marca-Páginas agora é "Número - Coordenador"
         texto_etiqueta = f"{reg} - {coord}"
         projetos_na_etapa[id_et].append(texto_etiqueta)
 
@@ -285,18 +276,8 @@ def gerar_fluxograma_geral(df_dados):
 
             if id_caixa in projetos_na_etapa:
                 lista_prjs = projetos_na_etapa[id_caixa]
-                
-                linhas_html = ""
-                for prj in lista_prjs:
-                    # Fonte 12 para garantir que "000000 - Nome Longo" caiba de forma elegante
-                    linhas_html += f'<TR><TD BGCOLOR="#FFEBEE" BORDER="1" COLOR="#D32F2F" ALIGN="LEFT" PORT="{prj}"><FONT POINT-SIZE="12" COLOR="#C62828"><b>{prj}</b></FONT></TD></TR>'
-                
-                marker_html = f"""<
-                <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="2" CELLPADDING="4">
-                    <TR><TD ALIGN="CENTER"><FONT COLOR="#D32F2F" POINT-SIZE="11"><b>PROJETOS NESTA ETAPA:</b></FONT></TD></TR>
-                    {linhas_html}
-                </TABLE>>"""
-                
+                linhas_html = "".join([f'<TR><TD BGCOLOR="#FFEBEE" BORDER="1" COLOR="#D32F2F" ALIGN="LEFT" PORT="{prj}"><FONT POINT-SIZE="12" COLOR="#C62828"><b>{prj}</b></FONT></TD></TR>' for prj in lista_prjs])
+                marker_html = f"""<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="2" CELLPADDING="4"><TR><TD ALIGN="CENTER"><FONT COLOR="#D32F2F" POINT-SIZE="11"><b>PROJETOS NESTA ETAPA:</b></FONT></TD></TR>{linhas_html}</TABLE>>"""
                 nome_marker = f'MARKER_{id_caixa}'
                 dot.node(nome_marker, marker_html, shape='plaintext')
                 
@@ -312,8 +293,37 @@ def gerar_fluxograma_geral(df_dados):
 
     return dot
 
+def gerar_minimapa(etapa_destaque=None):
+    """Gera a miniatura do fluxograma (O Minimapa estilo LoL)"""
+    dot = graphviz.Digraph(comment='Minimapa')
+    # Nós minúsculos, sem labels, colados uns nos outros
+    dot.attr(rankdir='TB', splines='ortho', nodesep='0.15', ranksep='0.15', size='3,3')
+    dot.attr('node', label='', shape='box', style='filled', width='0.3', height='0.15', margin='0')
+    
+    etapas_concluidas = obter_historico_concluido(etapa_destaque)
+    
+    for nome_setor, lista_ids in setores.items():
+        for id_caixa in lista_ids:
+            if id_caixa == 'N_INICIO':
+                dot.node(id_caixa, shape='circle', fillcolor='#4CAF50', color='#4CAF50', width='0.2', height='0.2')
+            elif id_caixa == 'N_FIM':
+                dot.node(id_caixa, shape='circle', fillcolor='#F44336', color='#F44336', width='0.2', height='0.2')
+            elif id_caixa == etapa_destaque:
+                # O "Campeão" no mapa - Um círculo vermelho vivo e maior!
+                dot.node(id_caixa, shape='circle', fillcolor='#FF2020', color='#900000', width='0.5', height='0.5', penwidth='2')
+            elif id_caixa in etapas_concluidas:
+                dot.node(id_caixa, fillcolor='#C8E6C9', color='#A5D6A7') # Caminho passado
+            else:
+                dot.node(id_caixa, fillcolor='#E0E0E0', color='#B0BEC5') # Caminho futuro
+                
+    for conexao in conexoes:
+        origem, destino = conexao[0], conexao[1]
+        dot.edge(origem, destino, color='#CFD8DC', penwidth='1.0', arrowsize='0.3')
+        
+    return dot
+
 # ==========================================
-# 7. ESTRUTURA DO APLICATIVO EM ABAS
+# 6. ESTRUTURA DO APLICATIVO EM ABAS
 # ==========================================
 aba_publica, aba_nap = st.tabs(["🌎 Consulta Pública", "⚙️ Visão Interna (Equipe NAP)"])
 
@@ -321,7 +331,6 @@ aba_publica, aba_nap = st.tabs(["🌎 Consulta Pública", "⚙️ Visão Interna
 with aba_publica:
     st.subheader("Rastreamento de Projetos")
     
-    # O Dropdown da Visão Pública ATUALIZADO COM PROTOCOLO DE INTENÇÕES
     tipo_contrato = st.selectbox(
         "Selecione a modalidade do contrato:", 
         ["Acordo de Parceria", "Protocolo de Intenções (Em Breve)", "ACT (Em Breve)", "Contrato global (Em Breve)"]
@@ -346,8 +355,14 @@ with aba_publica:
                 st.sidebar.markdown(f"### Nº {num_projeto}")
                 st.sidebar.markdown(f"**{tit_projeto}**")
                 st.sidebar.progress(porcentagem / 100, text=f"Progresso: {porcentagem}% Concluído")
-                st.sidebar.markdown("---")
                 
+                # --- O MINIMAPA ENTRA AQUI ---
+                st.sidebar.markdown("---")
+                st.sidebar.markdown("### 🗺️ Posição Global")
+                minimapa = gerar_minimapa(etapa_destaque=id_etapa)
+                st.sidebar.graphviz_chart(minimapa, use_container_width=True)
+                
+                st.sidebar.markdown("---")
                 fases_nomes = [
                     "1. Negociação de projeto", "2. Solicitação de Documentos",
                     "3. Conferência documental", "4. Abertura processo PEN/SIE",
@@ -392,7 +407,6 @@ with aba_nap:
             st.session_state['nap_autenticado'] = False
             st.rerun()
             
-        # --- O DROPDOWN DA VISÃO INTERNA ATUALIZADO ---
         st.markdown("---")
         tipo_contrato_nap = st.selectbox(
             "Selecione o Dashboard Gerencial que deseja visualizar:", 
