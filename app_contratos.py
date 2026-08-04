@@ -189,7 +189,7 @@ def obter_historico_concluido(etapa_atual):
     return completados
 
 # ==========================================
-# 5. GERADORES DE GRÁFICOS (PRINCIPAL, GERAL E MINIMAPA)
+# 5. GERADORES DE GRÁFICOS
 # ==========================================
 def gerar_fluxograma_individual(etapa_destaque=None):
     dot = graphviz.Digraph(comment='Fluxograma Individual')
@@ -218,6 +218,7 @@ def gerar_fluxograma_individual(etapa_destaque=None):
                 dot.node(id_caixa, texto_exibicao, shape='circle', style='filled', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth='3', fontname='Helvetica-Bold', fontsize='24')
             elif id_caixa == etapa_destaque:
                 dot.node(id_caixa, texto_exibicao, shape=formato, style='filled, rounded', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth='5', fontname='Helvetica-Bold', fontsize='22')
+                # AQUI: Texto alterado para ETAPA ATUAL
                 dot.node('MARKER', 'ETAPA ATUAL', shape='plaintext', fontcolor='#D32F2F', fontsize='16', fontname='Helvetica-Bold')
                 with dot.subgraph() as s:
                     s.attr(rank='same')
@@ -294,9 +295,8 @@ def gerar_fluxograma_geral(df_dados):
     return dot
 
 def gerar_minimapa(etapa_destaque=None):
-    """Gera a miniatura do fluxograma (O Minimapa estilo LoL)"""
+    """Gera a miniatura do fluxograma (O Minimapa estilo LoL) com Marca-Páginas"""
     dot = graphviz.Digraph(comment='Minimapa')
-    # Nós minúsculos, sem labels, colados uns nos outros
     dot.attr(rankdir='TB', splines='ortho', nodesep='0.15', ranksep='0.15', size='3,3')
     dot.attr('node', label='', shape='box', style='filled', width='0.3', height='0.15', margin='0')
     
@@ -311,6 +311,14 @@ def gerar_minimapa(etapa_destaque=None):
             elif id_caixa == etapa_destaque:
                 # O "Campeão" no mapa - Um círculo vermelho vivo e maior!
                 dot.node(id_caixa, shape='circle', fillcolor='#FF2020', color='#900000', width='0.5', height='0.5', penwidth='2')
+                
+                # AQUI: Texto alterado para ETAPA ATUAL
+                dot.node('MARKER_MINI', 'ETAPA ATUAL', shape='plaintext', fontcolor='#D32F2F', fontsize='12', fontname='Helvetica-Bold')
+                
+                with dot.subgraph() as s:
+                    s.attr(rank='same')
+                    s.edge(id_caixa, 'MARKER_MINI', dir='back', color='#D32F2F', penwidth='2.0', arrowtail='vee', minlen='1')
+                    
             elif id_caixa in etapas_concluidas:
                 dot.node(id_caixa, fillcolor='#C8E6C9', color='#A5D6A7') # Caminho passado
             else:
