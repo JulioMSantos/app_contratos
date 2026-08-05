@@ -155,9 +155,6 @@ conexoes = [
     ('N_O26', 'N_O27')
 ]
 
-# ==========================================
-# 4. ALGORITMOS BASE
-# ==========================================
 fases_nomes = [
     "1. Negociação de projeto", "2. Solicitação de Documentos",
     "3. Conferência documental", "4. Abertura processo PEN/SIE",
@@ -165,6 +162,9 @@ fases_nomes = [
     "7. Análise pela equipe CT&I", "8. Assinatura contrato", "9. Projeto vigente"
 ]
 
+# ==========================================
+# 4. ALGORITMOS BASE
+# ==========================================
 def avaliar_status(id_etapa):
     if id_etapa in ['N_V4', 'N_V5', 'N_C6', 'N_V7', 'N_V10', 'N_V11', 'N_V10_2_2', 'N_V_D1', 'N_V_D2', 'N_V_D3', 'N_V_SEGUIR']: return 11, 1
     elif id_etapa in ['N_V12', 'N_C13', 'N_V14_1', 'N_V14_2', 'N_A20_1', 'N_A20_3', 'N_A_D2']: return 22, 2
@@ -240,8 +240,38 @@ def gerar_fluxograma_individual(etapa_destaque=None):
 
     return dot
 
+def gerar_minimapa_individual(etapa_destaque=None):
+    dot = graphviz.Digraph(comment='Minimapa')
+    dot.attr(rankdir='TB', splines='ortho', nodesep='0.15', ranksep='0.15', size='3,3')
+    dot.attr('node', label='', shape='box', style='filled', width='0.3', height='0.15', margin='0')
+    
+    etapas_concluidas = obter_historico_concluido(etapa_destaque)
+    
+    for nome_setor, lista_ids in setores.items():
+        for id_caixa in lista_ids:
+            if id_caixa == 'N_INICIO': dot.node(id_caixa, shape='circle', fillcolor='#4CAF50', color='#4CAF50', width='0.2', height='0.2')
+            elif id_caixa == 'N_FIM': dot.node(id_caixa, shape='circle', fillcolor='#F44336', color='#F44336', width='0.2', height='0.2')
+            elif id_caixa == etapa_destaque:
+                dot.node(id_caixa, shape='circle', fillcolor='#FF2020', color='#900000', width='0.5', height='0.5', penwidth='2')
+                dot.node('MARKER_MINI', 'ETAPA ATUAL', shape='plaintext', fontcolor='#D32F2F', fontsize='12', fontname='Helvetica-Bold')
+                with dot.subgraph() as s:
+                    s.attr(rank='same')
+                    s.edge(id_caixa, 'MARKER_MINI', dir='back', color='#D32F2F', penwidth='2.0', arrowtail='vee', minlen='1')
+            elif id_caixa in etapas_concluidas: dot.node(id_caixa, fillcolor='#C8E6C9', color='#A5D6A7') 
+            else: dot.node(id_caixa, fillcolor='#E0E0E0', color='#B0BEC5') 
+                
+    for conexao in conexoes:
+        origem, destino = conexao[0], conexao[1]
+        dot.edge(origem, destino, color='#CFD8DC', penwidth='1.0', arrowsize='0.3')
+        
+    return dot
+
+# ==========================================
+# 5B. GERADORES DE GRÁFICOS (VISÃO NAP)
+# ==========================================
 def gerar_fluxograma_geral(df_dados):
-    dot = graphviz.Digraph(comment='Fluxograma Administrativo')
+    """ MAPA PRINCIPAL NAP: Mostra os nomes/números dos projetos, com trava de segurança de 10 por caixa """
+    dot = graphviz.Digraph(comment='Fluxograma Administrativo Lista')
     dot.attr(rankdir='TB', splines='ortho', nodesep='0.8', ranksep='0.8')
     dot.attr('node', margin='0.1,0.05', width='0', height='0')
     
@@ -249,12 +279,13 @@ def gerar_fluxograma_geral(df_dados):
     for index, row in df_dados.iterrows():
         etapa_bruta = str(row['Etapa_Atual']).strip().replace('.0', '')
         reg = str(row['Registro']).replace('.0', '')
+        coord = str(row['Coordenador']).strip()
+        if coord.lower() == 'nan' or coord == '': coord = 'Sem Nome'
         if not reg or reg == 'nan': continue
         
         id_et = tradutor_etapas.get(etapa_bruta, etapa_bruta)
-        if id_et not in projetos_na_etapa:
-            projetos_na_etapa[id_et] = []
-        projetos_na_etapa[id_et].append(reg)
+        if id_et not in projetos_na_etapa: projetos_na_etapa[id_et] = []
+        projetos_na_etapa[id_et].append(f"{reg} - {coord}")
 
     for nome_setor, lista_ids in setores.items():
         for id_caixa in lista_ids:
@@ -278,11 +309,19 @@ def gerar_fluxograma_geral(df_dados):
             dot.node(id_caixa, texto_exibicao, shape=formato if id_caixa not in ['N_INICIO', 'N_FIM'] else 'circle', style='filled, rounded' if id_caixa not in ['N_INICIO', 'N_FIM'] else 'filled', fillcolor=cor_fundo, color=cor_borda, fontcolor=cor_fonte, penwidth=penwidth, fontname='Helvetica-Bold', fontsize='18' if id_caixa not in ['N_INICIO', 'N_FIM'] else '24')
 
             if id_caixa in projetos_na_etapa:
-                qtd_projetos = len(projetos_na_etapa[id_caixa])
-                texto_etiqueta = f"{qtd_projetos} PROJETO{'S' if qtd_projetos > 1 else ''}"
+                lista_prjs = projetos_na_etapa[id_caixa]
+                max_exibir = 10 # TRAVA DE SEGURANÇA PARA NÃO TRAVAR O NAVEGADOR
                 
+                linhas_html = ""
+                for prj in lista_prjs[:max_exibir]:
+                    linhas_html += f'<TR><TD BGCOLOR="#FFEBEE" BORDER="1" COLOR="#D32F2F" ALIGN="LEFT"><FONT POINT-SIZE="11" COLOR="#C62828"><b>{prj}</b></FONT></TD></TR>'
+                
+                if len(lista_prjs) > max_exibir:
+                    linhas_html += f'<TR><TD BGCOLOR="#FFCDD2" BORDER="1" COLOR="#D32F2F" ALIGN="CENTER"><FONT POINT-SIZE="11" COLOR="#C62828"><b>➕ ... e mais {len(lista_prjs) - max_exibir} projetos</b></FONT></TD></TR>'
+
+                marker_html = f"""<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="2" CELLPADDING="4"><TR><TD ALIGN="CENTER"><FONT COLOR="#D32F2F" POINT-SIZE="11"><b>PROCESSOS AQUI:</b></FONT></TD></TR>{linhas_html}</TABLE>>"""
                 nome_marker = f'MARKER_{id_caixa}'
-                dot.node(nome_marker, texto_etiqueta, shape='box', style='filled, rounded', fillcolor='#FFFFFF', color='#D32F2F', fontcolor='#C62828', penwidth='2.5', fontname='Helvetica-Bold', fontsize='14')
+                dot.node(nome_marker, marker_html, shape='plaintext')
                 
                 with dot.subgraph() as s:
                     s.attr(rank='same')
@@ -296,25 +335,37 @@ def gerar_fluxograma_geral(df_dados):
 
     return dot
 
-def gerar_minimapa(etapa_destaque=None):
-    dot = graphviz.Digraph(comment='Minimapa')
-    dot.attr(rankdir='TB', splines='ortho', nodesep='0.15', ranksep='0.15', size='3,3')
+def gerar_minimapa_nap(df_dados):
+    """ MINIMAPA NAP: Mostra os nós minúsculos com a etiqueta de contagem 'X PROJETOS' """
+    dot = graphviz.Digraph(comment='Minimapa de Calor')
+    dot.attr(rankdir='TB', splines='ortho', nodesep='0.25', ranksep='0.25')
     dot.attr('node', label='', shape='box', style='filled', width='0.3', height='0.15', margin='0')
     
-    etapas_concluidas = obter_historico_concluido(etapa_destaque)
-    
+    projetos_na_etapa = {}
+    for index, row in df_dados.iterrows():
+        etapa_bruta = str(row['Etapa_Atual']).strip().replace('.0', '')
+        reg = str(row['Registro']).replace('.0', '')
+        if not reg or reg == 'nan': continue
+        id_et = tradutor_etapas.get(etapa_bruta, etapa_bruta)
+        if id_et not in projetos_na_etapa: projetos_na_etapa[id_et] = 0
+        projetos_na_etapa[id_et] += 1
+        
     for nome_setor, lista_ids in setores.items():
         for id_caixa in lista_ids:
             if id_caixa == 'N_INICIO': dot.node(id_caixa, shape='circle', fillcolor='#4CAF50', color='#4CAF50', width='0.2', height='0.2')
             elif id_caixa == 'N_FIM': dot.node(id_caixa, shape='circle', fillcolor='#F44336', color='#F44336', width='0.2', height='0.2')
-            elif id_caixa == etapa_destaque:
-                dot.node(id_caixa, shape='circle', fillcolor='#FF2020', color='#900000', width='0.5', height='0.5', penwidth='2')
-                dot.node('MARKER_MINI', 'ETAPA ATUAL', shape='plaintext', fontcolor='#D32F2F', fontsize='12', fontname='Helvetica-Bold')
+            elif id_caixa in projetos_na_etapa:
+                dot.node(id_caixa, fillcolor='#FFCDD2', color='#D32F2F', penwidth='2')
+                
+                qtd = projetos_na_etapa[id_caixa]
+                texto = f"{qtd} PROJETO{'S' if qtd>1 else ''}"
+                nome_marker = f'MINIMARKER_{id_caixa}'
+                dot.node(nome_marker, texto, shape='box', style='filled, rounded', fillcolor='#FFFFFF', color='#D32F2F', fontcolor='#C62828', penwidth='1.5', fontname='Helvetica-Bold', fontsize='10', width='0', height='0', margin='0.05')
                 with dot.subgraph() as s:
                     s.attr(rank='same')
-                    s.edge(id_caixa, 'MARKER_MINI', dir='back', color='#D32F2F', penwidth='2.0', arrowtail='vee', minlen='1')
-            elif id_caixa in etapas_concluidas: dot.node(id_caixa, fillcolor='#C8E6C9', color='#A5D6A7') 
-            else: dot.node(id_caixa, fillcolor='#E0E0E0', color='#B0BEC5') 
+                    s.edge(id_caixa, nome_marker, dir='back', color='#D32F2F', penwidth='1.5', arrowtail='vee', minlen='1')
+            else:
+                dot.node(id_caixa, fillcolor='#E0E0E0', color='#B0BEC5')
                 
     for conexao in conexoes:
         origem, destino = conexao[0], conexao[1]
@@ -358,7 +409,7 @@ with aba_publica:
                 
                 st.sidebar.markdown("---")
                 st.sidebar.markdown("### 🗺️ Posição Global")
-                minimapa = gerar_minimapa(etapa_destaque=id_etapa)
+                minimapa = gerar_minimapa_individual(etapa_destaque=id_etapa)
                 st.sidebar.graphviz_chart(minimapa, use_container_width=True)
                 
                 st.sidebar.markdown("---")
@@ -405,7 +456,6 @@ with aba_nap:
         
         if tipo_contrato_nap == "Acordos de Parceria":
             
-            # --- CÁLCULO DOS PROJETOS POR MACROFASE PARA A LINHA DO TEMPO DO NAP ---
             df_validos = df[df['Registro'] != ''].copy()
             total_projetos = len(df_validos)
             
@@ -416,9 +466,15 @@ with aba_nap:
                 _, fase_num = avaliar_status(id_etapa)
                 contagem_macro[fase_num] += 1
             
-            # --- BARRA LATERAL (LINHA DO TEMPO GERAL NAP) ---
+            # --- BARRA LATERAL NAP (MINIMAPA DE CALOR + TAREFAS MACRO ATUALIZADAS) ---
             st.sidebar.title("📊 Resumo Macro (NAP)")
             st.sidebar.markdown(f"**Total Ativos:** {total_projetos} projetos")
+            
+            st.sidebar.markdown("---")
+            st.sidebar.markdown("### 🗺️ Mapa de Calor (Gargalos)")
+            minimapa_nap = gerar_minimapa_nap(df_validos)
+            st.sidebar.graphviz_chart(minimapa_nap, use_container_width=True)
+            
             st.sidebar.markdown("---")
             st.sidebar.markdown("### 📍 Linha do Tempo Geral")
             st.sidebar.markdown("Quantidade de projetos em cada fase:")
@@ -426,25 +482,25 @@ with aba_nap:
             for i, nome_fase in enumerate(fases_nomes, 1):
                 qtd = contagem_macro[i]
                 if qtd > 0:
-                    st.sidebar.markdown(f"<div style='background-color:#FFEBEE; color:#C62828; padding:8px; border-radius:5px; margin-bottom:5px; border-left:4px solid #D32F2F;'><b>{qtd}</b> - {nome_fase}</div>", unsafe_allow_html=True)
+                    # Agora mostra "X projetos" explícito
+                    st.sidebar.markdown(f"<div style='background-color:#FFEBEE; color:#C62828; padding:8px; border-radius:5px; margin-bottom:5px; border-left:4px solid #D32F2F;'><b>{qtd} projetos</b> - {nome_fase}</div>", unsafe_allow_html=True)
                 else:
-                    st.sidebar.markdown(f"<div style='background-color:#F5F5F5; color:#9E9E9E; padding:8px; border-radius:5px; margin-bottom:5px; border-left:4px solid #9E9E9E;'><b>0</b> - {nome_fase}</div>", unsafe_allow_html=True)
+                    st.sidebar.markdown(f"<div style='background-color:#F5F5F5; color:#9E9E9E; padding:8px; border-radius:5px; margin-bottom:5px; border-left:4px solid #9E9E9E;'><b>0 projetos</b> - {nome_fase}</div>", unsafe_allow_html=True)
             
-            # --- EXIBIÇÃO DO FLUXOGRAMA ---
-            st.write(f"Monitorando o mapeamento de gargalos (Acordos de Parceria):")
-            grafico_macro = gerar_fluxograma_geral(df)
+            # --- EXIBIÇÃO DO FLUXOGRAMA COM DETALHAMENTO (Com Trava de Segurança) ---
+            st.write(f"Monitorando o detalhamento de processos:")
+            grafico_macro = gerar_fluxograma_geral(df_validos)
             st.graphviz_chart(grafico_macro, use_container_width=False)
             
-            # --- TABELA E BOTÃO DE DOWNLOAD ---
+            # --- TABELA DE EXPORTAÇÃO ---
             st.markdown("---")
-            st.markdown("### 📋 Detalhamento dos Projetos Ativos")
+            st.markdown("### 📋 Base de Dados Completa")
             
             df_resumo = df_validos.copy()
             df_resumo['Fase Atual'] = df_resumo['Etapa_Atual'].apply(
                 lambda x: textos.get(tradutor_etapas.get(str(x).strip().replace('.0',''), str(x).strip().replace('.0','')), "Não identificada").replace('\n', ' ')
             )
             
-            # Botão de exportação
             csv_dados = df_resumo[['Registro', 'Titulo', 'Coordenador', 'Fase Atual']].to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="📥 Baixar Planilha (Excel/CSV)", 
@@ -456,5 +512,5 @@ with aba_nap:
             st.dataframe(df_resumo[['Registro', 'Titulo', 'Coordenador', 'Fase Atual']], use_container_width=True, hide_index=True)
             
         else:
-            st.sidebar.empty() # Limpa a barra lateral se for "Em Breve"
+            st.sidebar.empty()
             st.info(f"🚧 O painel gerencial interno para {tipo_contrato_nap} está em desenvolvimento.")
