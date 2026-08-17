@@ -36,7 +36,7 @@ st.markdown("""
 # ==========================================
 # 2. CONEXÃO COM O GOOGLE PLANILHAS
 # ==========================================
-url_google_sheets = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRXE69ipW9usXVW5msH5SPVV5CMz5tboAlWg_O-9Zdi4_WGxdB5BmTlXxdd_2OSrW6_S91J66bckSDs/pub?gid=409266791&single=true&output=csv"
+url_google_sheets = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRXE69ipW9usXVW5msH5SPVV5CMz5tboAlWg_O-9Zdi4_WGxdB5BmTlXxdd_2OSrW6_S91J66bckSDs/pubhtml?gid=409266791&single=true"
 
 try:
     df_bruto = pd.read_csv(url_google_sheets, dtype=str)
@@ -266,11 +266,7 @@ def gerar_minimapa_individual(etapa_destaque=None):
         
     return dot
 
-# ==========================================
-# 5B. GERADORES DE GRÁFICOS (VISÃO NAP)
-# ==========================================
 def gerar_fluxograma_geral(df_dados):
-    """ MAPA PRINCIPAL NAP: Mostra os nomes/números dos projetos, com trava de segurança de 10 por caixa """
     dot = graphviz.Digraph(comment='Fluxograma Administrativo Lista')
     dot.attr(rankdir='TB', splines='ortho', nodesep='0.8', ranksep='0.8')
     dot.attr('node', margin='0.1,0.05', width='0', height='0')
@@ -310,7 +306,7 @@ def gerar_fluxograma_geral(df_dados):
 
             if id_caixa in projetos_na_etapa:
                 lista_prjs = projetos_na_etapa[id_caixa]
-                max_exibir = 10 # TRAVA DE SEGURANÇA PARA NÃO TRAVAR O NAVEGADOR
+                max_exibir = 10 
                 
                 linhas_html = ""
                 for prj in lista_prjs[:max_exibir]:
@@ -336,7 +332,6 @@ def gerar_fluxograma_geral(df_dados):
     return dot
 
 def gerar_minimapa_nap(df_dados):
-    """ MINIMAPA NAP: Mostra os nós minúsculos com a etiqueta de contagem 'X PROJETOS' """
     dot = graphviz.Digraph(comment='Minimapa de Calor')
     dot.attr(rankdir='TB', splines='ortho', nodesep='0.25', ranksep='0.25')
     dot.attr('node', label='', shape='box', style='filled', width='0.3', height='0.15', margin='0')
@@ -374,13 +369,19 @@ def gerar_minimapa_nap(df_dados):
     return dot
 
 # ==========================================
-# 6. ESTRUTURA DO APLICATIVO EM ABAS
+# 6. ESTRUTURA DO APLICATIVO (MENU LATERAL FIXO)
 # ==========================================
-aba_publica, aba_nap = st.tabs(["🌎 Consulta Pública", "⚙️ Visão Interna (Equipe NAP)"])
+# A grande mágica de UX: Menu de Navegação na Barra Lateral ao invés de Abas no topo
+st.sidebar.title("Navegação do Sistema")
+modo_visao = st.sidebar.radio(
+    "Selecione o módulo de acesso:",
+    ["🌎 Consulta Pública", "⚙️ Visão Interna (Equipe NAP)"]
+)
+st.sidebar.markdown("---")
 
-# ----------------- ABA PÚBLICA -----------------
-with aba_publica:
-    st.subheader("Rastreamento de Projetos")
+# ----------------- MÓDULO: CONSULTA PÚBLICA -----------------
+if modo_visao == "🌎 Consulta Pública":
+    st.title("Rastreamento de Projetos")
     
     tipo_contrato = st.selectbox(
         "Selecione a modalidade do contrato:", 
@@ -402,6 +403,7 @@ with aba_publica:
                 id_etapa = tradutor_etapas.get(etapa_bruta, etapa_bruta)
                 porcentagem, etapa_macro = avaliar_status(id_etapa)
                 
+                # A Barra lateral da Busca Pública (só aparece se estiver no módulo Público)
                 st.sidebar.title("📊 Painel do Projeto")
                 st.sidebar.markdown(f"### Nº {num_projeto}")
                 st.sidebar.markdown(f"**{tit_projeto}**")
@@ -414,6 +416,12 @@ with aba_publica:
                 
                 st.sidebar.markdown("---")
                 st.sidebar.markdown("### 📍 Linha do Tempo")
+                fases_nomes = [
+                    "1. Negociação de projeto", "2. Solicitação de Documentos",
+                    "3. Conferência documental", "4. Abertura processo PEN/SIE",
+                    "5. Aprovação do projeto no colegiado", "6. Aprovação PRA",
+                    "7. Análise pela equipe CT&I", "8. Assinatura contrato", "9. Projeto vigente"
+                ]
                 for i, nome_fase in enumerate(fases_nomes, 1):
                     if i < etapa_macro: st.sidebar.markdown(f"<div style='background-color:#E8F5E9; color:#2E7D32; padding:10px; border-radius:5px; margin-bottom:8px; border-left:4px solid #4CAF50;'><b>✅ {nome_fase}</b></div>", unsafe_allow_html=True)
                     elif i == etapa_macro: st.sidebar.markdown(f"<div style='background-color:#FFF9C4; color:#F57F17; padding:10px; border-radius:5px; margin-bottom:8px; border-left:4px solid #FBC02D; box-shadow: 0px 2px 5px rgba(0,0,0,0.1);'><b>⏳ {nome_fase}</b></div>", unsafe_allow_html=True)
@@ -427,9 +435,9 @@ with aba_publica:
     else:
         st.info(f"O módulo público para {tipo_contrato} estará disponível em breve.")
 
-# ----------------- ABA CONFIDENCIAL (NAP) -----------------
-with aba_nap:
-    st.subheader("Painel de Gestão de Contratos")
+# ----------------- MÓDULO: VISÃO INTERNA (NAP) -----------------
+elif modo_visao == "⚙️ Visão Interna (Equipe NAP)":
+    st.title("Painel de Gestão de Contratos")
     
     if not st.session_state['nap_autenticado']:
         senha_digitada = st.text_input("🔑 Digite a senha de acesso (NAP):", type="password")
@@ -466,7 +474,7 @@ with aba_nap:
                 _, fase_num = avaliar_status(id_etapa)
                 contagem_macro[fase_num] += 1
             
-            # --- BARRA LATERAL NAP (MINIMAPA DE CALOR + TAREFAS MACRO ATUALIZADAS) ---
+            # A Barra lateral do NAP (só aparece se estiver no módulo NAP)
             st.sidebar.title("📊 Resumo Macro (NAP)")
             st.sidebar.markdown(f"**Total Ativos:** {total_projetos} projetos")
             
@@ -479,20 +487,23 @@ with aba_nap:
             st.sidebar.markdown("### 📍 Linha do Tempo Geral")
             st.sidebar.markdown("Quantidade de projetos em cada fase:")
             
+            fases_nomes = [
+                "1. Negociação de projeto", "2. Solicitação de Documentos",
+                "3. Conferência documental", "4. Abertura processo PEN/SIE",
+                "5. Aprovação do projeto no colegiado", "6. Aprovação PRA",
+                "7. Análise pela equipe CT&I", "8. Assinatura contrato", "9. Projeto vigente"
+            ]
             for i, nome_fase in enumerate(fases_nomes, 1):
                 qtd = contagem_macro[i]
                 if qtd > 0:
-                    # Agora mostra "X projetos" explícito
                     st.sidebar.markdown(f"<div style='background-color:#FFEBEE; color:#C62828; padding:8px; border-radius:5px; margin-bottom:5px; border-left:4px solid #D32F2F;'><b>{qtd} projetos</b> - {nome_fase}</div>", unsafe_allow_html=True)
                 else:
                     st.sidebar.markdown(f"<div style='background-color:#F5F5F5; color:#9E9E9E; padding:8px; border-radius:5px; margin-bottom:5px; border-left:4px solid #9E9E9E;'><b>0 projetos</b> - {nome_fase}</div>", unsafe_allow_html=True)
             
-            # --- EXIBIÇÃO DO FLUXOGRAMA COM DETALHAMENTO (Com Trava de Segurança) ---
             st.write(f"Monitorando o detalhamento de processos:")
             grafico_macro = gerar_fluxograma_geral(df_validos)
             st.graphviz_chart(grafico_macro, use_container_width=False)
             
-            # --- TABELA DE EXPORTAÇÃO ---
             st.markdown("---")
             st.markdown("### 📋 Base de Dados Completa")
             
@@ -512,5 +523,4 @@ with aba_nap:
             st.dataframe(df_resumo[['Registro', 'Titulo', 'Coordenador', 'Fase Atual']], use_container_width=True, hide_index=True)
             
         else:
-            st.sidebar.empty()
             st.info(f"🚧 O painel gerencial interno para {tipo_contrato_nap} está em desenvolvimento.")
