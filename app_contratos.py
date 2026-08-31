@@ -27,9 +27,6 @@ st.markdown("""
             max-width: 100% !important; 
             height: auto !important;
         }
-        .stProgress > div > div > div > div {
-            background-color: #4CAF50;
-        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -163,7 +160,7 @@ fases_nomes = [
 ]
 
 # ==========================================
-# 4. ALGORITMOS BASE
+# 4. ALGORITMOS BASE E CORES DINÂMICAS
 # ==========================================
 def avaliar_status(id_etapa):
     if id_etapa in ['N_V4', 'N_V5', 'N_C6', 'N_V7', 'N_V10', 'N_V11', 'N_V10_2_2', 'N_V_D1', 'N_V_D2', 'N_V_D3', 'N_V_SEGUIR']: return 11, 1
@@ -176,6 +173,12 @@ def avaliar_status(id_etapa):
     elif id_etapa in ['N_A22_1', 'N_A23_1']: return 88, 8
     elif id_etapa in ['N_FIM', 'N_A_SEGUIR']: return 100, 9
     else: return 50, 5
+
+def obter_cor_progresso(porc):
+    if porc <= 30: return '#F44336' # Vermelho
+    elif porc <= 60: return '#FF9800' # Laranja
+    elif porc <= 90: return '#FBC02D' # Amarelo (Contraste otimizado)
+    else: return '#4CAF50' # Verde
 
 def obter_historico_concluido(etapa_atual):
     if not etapa_atual: return set()
@@ -369,9 +372,8 @@ def gerar_minimapa_nap(df_dados):
     return dot
 
 # ==========================================
-# 6. ESTRUTURA DO APLICATIVO (MENU LATERAL FIXO)
+# 6. NAVEGAÇÃO DO APLICATIVO
 # ==========================================
-# A grande mágica de UX: Menu de Navegação na Barra Lateral ao invés de Abas no topo
 st.sidebar.title("Navegação do Sistema")
 modo_visao = st.sidebar.radio(
     "Selecione o módulo de acesso:",
@@ -402,8 +404,17 @@ if modo_visao == "🌎 Consulta Pública":
                 
                 id_etapa = tradutor_etapas.get(etapa_bruta, etapa_bruta)
                 porcentagem, etapa_macro = avaliar_status(id_etapa)
+                cor_barra = obter_cor_progresso(porcentagem)
                 
-                # A Barra lateral da Busca Pública (só aparece se estiver no módulo Público)
+                # Injeta a cor dinâmica da barra baseada na porcentagem
+                st.sidebar.markdown(f"""
+                    <style>
+                        .stProgress > div > div > div > div {{
+                            background-color: {cor_barra} !important;
+                        }}
+                    </style>
+                """, unsafe_allow_html=True)
+                
                 st.sidebar.title("📊 Painel do Projeto")
                 st.sidebar.markdown(f"### Nº {num_projeto}")
                 st.sidebar.markdown(f"**{tit_projeto}**")
@@ -416,12 +427,6 @@ if modo_visao == "🌎 Consulta Pública":
                 
                 st.sidebar.markdown("---")
                 st.sidebar.markdown("### 📍 Linha do Tempo")
-                fases_nomes = [
-                    "1. Negociação de projeto", "2. Solicitação de Documentos",
-                    "3. Conferência documental", "4. Abertura processo PEN/SIE",
-                    "5. Aprovação do projeto no colegiado", "6. Aprovação PRA",
-                    "7. Análise pela equipe CT&I", "8. Assinatura contrato", "9. Projeto vigente"
-                ]
                 for i, nome_fase in enumerate(fases_nomes, 1):
                     if i < etapa_macro: st.sidebar.markdown(f"<div style='background-color:#E8F5E9; color:#2E7D32; padding:10px; border-radius:5px; margin-bottom:8px; border-left:4px solid #4CAF50;'><b>✅ {nome_fase}</b></div>", unsafe_allow_html=True)
                     elif i == etapa_macro: st.sidebar.markdown(f"<div style='background-color:#FFF9C4; color:#F57F17; padding:10px; border-radius:5px; margin-bottom:8px; border-left:4px solid #FBC02D; box-shadow: 0px 2px 5px rgba(0,0,0,0.1);'><b>⏳ {nome_fase}</b></div>", unsafe_allow_html=True)
@@ -474,7 +479,6 @@ elif modo_visao == "⚙️ Visão Interna (Equipe NAP)":
                 _, fase_num = avaliar_status(id_etapa)
                 contagem_macro[fase_num] += 1
             
-            # A Barra lateral do NAP (só aparece se estiver no módulo NAP)
             st.sidebar.title("📊 Resumo Macro (NAP)")
             st.sidebar.markdown(f"**Total Ativos:** {total_projetos} projetos")
             
@@ -487,12 +491,6 @@ elif modo_visao == "⚙️ Visão Interna (Equipe NAP)":
             st.sidebar.markdown("### 📍 Linha do Tempo Geral")
             st.sidebar.markdown("Quantidade de projetos em cada fase:")
             
-            fases_nomes = [
-                "1. Negociação de projeto", "2. Solicitação de Documentos",
-                "3. Conferência documental", "4. Abertura processo PEN/SIE",
-                "5. Aprovação do projeto no colegiado", "6. Aprovação PRA",
-                "7. Análise pela equipe CT&I", "8. Assinatura contrato", "9. Projeto vigente"
-            ]
             for i, nome_fase in enumerate(fases_nomes, 1):
                 qtd = contagem_macro[i]
                 if qtd > 0:
@@ -523,4 +521,5 @@ elif modo_visao == "⚙️ Visão Interna (Equipe NAP)":
             st.dataframe(df_resumo[['Registro', 'Titulo', 'Coordenador', 'Fase Atual']], use_container_width=True, hide_index=True)
             
         else:
+            st.sidebar.empty()
             st.info(f"🚧 O painel gerencial interno para {tipo_contrato_nap} está em desenvolvimento.")
