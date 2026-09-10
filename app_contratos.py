@@ -12,7 +12,7 @@ LISTA_PF = ["Direitos autorais", "Serviços técnicos profissionais", "Serviços
 LISTA_PASSAGENS = ["Passagens para o país", "Passagens para o exterior", "Locação de meios de transportes", "Locomoção urbana", "Outras despesas com locomoção"]
 LISTA_OBRAS = ["Estudos e Projetos", "Obras em andamento", "Instalações", "Almoxarifado de obras", "Outras obras e instalações"]
 LISTA_PJ = [
-    "Assinaturas de periódicos e anuidades", "Direitos autorais", "Serviços técnicos profissionais", "Manutenção de software", "Locação de imóveis", "Locação de softwares", "Locação de máquinas e equipamentos", "Locação de bens Mov. Out. naturezas e intangíveis", "Manutenção e conservação de bens imóveis", "Manutenção e conservação de máquinas e equipamentos", "Serviço de estacionamento de veículos", "Manutenção e conservação de veículos", "Exposições, congressos e conferências", "Confecção de uniformes", "Desenvolvimento de software", "Suporte de infraestrutura de TI", "Suporte a usuários de TI", "Hospedagem de sistemas", "Locação de equipamentos de processamento de dados", "Fornecimento de alimentação", "Serviços de energia elétrica", "Serviços de água e esgoto", "Serviços de comunicação em geral", "Serviços médico-hospitalar, odontológicos e laboratoriais", "Serviços de análises e pesquisas científicas", "Serviços de tecnologia da informação", "Serviços de telecomunicações", "Serviços de áudio, vídeo e foto", "Serviços de produção industrial", "Serviços gráficos e editoriais", "Seguros em geral", "Confecção de material de acondicionamento e embalagem", "Vale-transporte", "Fretes e transportes de encomendas", "Serviço de apoio administrativo, técnico e operacional", "Hospedagens", "Serviços de cópias e reprodução de documentos", "Serviços de publicidade legal", "Aquisição de softwares sob encomenda", "Manutenção e conservação de equip. de processamento de dados", "Comunicação de dados", "Testes e confecções de placas relacionadas ao objeto do projeto", "Outros serviços de terceiros pessoa jurídica"
+    "Assinaturas de periódicos e anuidades", "Direitos autorais", "Serviços técnicos profissionais", "Manutenção de software", "Locação de imóveis", "Locação de softwares", "Locação de máquinas e equipamentos", "Locação de bens Mov. Out. naturezas e intangíveis", "Manutenção e conservação de bens imóveis", "Manutenção e conservação de máquinas e equipamentos", "Serviço de estacionamento de veículos", "Manutenção e conservação de veículos", "Exposições, congressos e conferências", "Confecção de uniformes", "Desenvolvimento de software", "Suporte de infraestrutura de TI", "Suporte a usuários de TI", "Hospedagem de sistemas", "Locação de equipamentos de processamento de dados", "Fornecimento de alimentação", "Serviços de energia elétrica", "Serviços de água e esgoto", "Serviços de comunicação em geral", "Serviços médico-hospitalar, odontológicos e laboratoriais", "Serviços de análises e pesquisas científicas", "Serviços de tecnologia da informação", "Serviços de telecomunicações", "Serviços de áudio, vídeo e foto", "Serviços de produção industrial", "Serviços gráficos e editoriais", "Seguros em geral", "Confecção de material de acondicionamento e embalagem", "Vale-transporte", "Fretes e transportes de encomendas", "Serviço de apoio administrativo, técnico e operacional", "Hospagens", "Serviços de cópias e reprodução de documentos", "Serviços de publicidade legal", "Aquisição de softwares sob encomenda", "Manutenção e conservação de equip. de processamento de dados", "Comunicação de dados", "Testes e confecções de placas relacionadas ao objeto do projeto", "Outros serviços de terceiros pessoa jurídica"
 ]
 LISTA_CONSUMO = [
     "Combustíveis e lubrificantes automotivos", "Gás e outros materiais engarrafados", "Alimentos para animais", "Gêneros de alimentação", "Animais para pesquisa e abate", "Material farmacológico", "Material odontológico", "Material químico", "Material educativo e esportivo", "Material de expediente", "Material de processamento de dados", "Materiais e medicamentos para uso veterinário", "Material de acondicionamento e embalagem", "Material de copa e cozinha", "Material de limpeza e produtos de higienização", "Uniformes, tecidos e aviamentos", "Material para manutenção de bens imóveis/instalações", "Material para manutenção de bens móveis", "Material elétrico e eletrônico", "Material de proteção e segurança", "Material para áudio, vídeo e foto", "Material para comunicações", "Sementes, mudas de plantas e insumos", "Material para produção industrial", "Material laboratorial", "Material hospitalar", "Material para manutenção de veículos", "Material biológico", "Material para utilização em gráfica", "Ferramentas", "Material de sinalização visual e outros", "Material bibliográfico", "Aquisição de software - produto", "Material para divulgação", "Materiais de Consumo para utilização no laboratório", "Outros Materiais de Consumo"
@@ -30,25 +30,28 @@ col_config_dinheiro = {
 }
 
 # Variáveis para a matemática
-total_base_infra = 0.0 # Itens que sofrem taxa da UFSM (Tudo exceto Obras e Anexo 1)
-total_obras_equip = 0.0 # Itens isentos da taxa da UFSM
+total_base_infra = 0.0 
+total_obras_equip = 0.0
+
+# ==========================================
+# BARRA LATERAL FIXA E SELETOR DE FUNDAÇÃO
+# ==========================================
+# Como o Streamlit lê de cima para baixo, pegamos a escolha da fundação logo no início
+fundacao_escolhida = st.sidebar.selectbox(
+    "🏛️ Selecione a Fundação",
+    ["FATEC", "FAURGS", "FUNDEP", "FDMS"],
+    help="As taxas e cálculos são ajustados de acordo com as regras de cada fundação."
+)
+
+st.sidebar.divider()
 
 # ==========================================
 # ÁREA PRINCIPAL
 # ==========================================
 st.title("💰 Gerador de Dados Financeiros (Plano de Trabalho)")
-
-# SELEÇÃO DA FUNDAÇÃO
-st.markdown("### 🏛️ Qual a Fundação do Projeto?")
-fundacao_escolhida = st.selectbox(
-    "As fórmulas matemáticas e taxas calculadas abaixo se adaptarão automaticamente ao modelo escolhido:",
-    ["FATEC", "FAURGS", "FUNDEP", "FDMS"]
-)
-st.divider()
-
 st.write("Preencha as informações financeiras abaixo. Acompanhe os cálculos na barra lateral.")
 
-# 1. EQUIPES (Sofrem taxa Infra UFSM)
+# 1. EQUIPES
 st.header("1. Equipe Executora")
 with st.expander("Equipe Vinculada à UFSM", expanded=True):
     with st.form("form_vinc", clear_on_submit=True):
@@ -99,7 +102,6 @@ with st.expander("Equipe Não Vinculada"):
 total_base_infra += sum(item["Total"] for item in st.session_state.eq_vinc)
 total_base_infra += sum(item["Total"] for item in st.session_state.eq_nao_vinc)
 
-
 # 2. TABELAS FIXAS
 st.header("2. Despesas e Serviços")
 def renderizar_tabela_fixa(titulo, lista_itens, prefixo_chave):
@@ -121,9 +123,8 @@ dados_obras = renderizar_tabela_fixa("4.8 - Obras e Instalações (Isento de Tax
 for d in [dados_diarias, dados_pj, dados_pf, dados_passagens, dados_consumo]:
     total_base_infra += sum(d.values())
 
-# Obras não pagam infra UFSM, vai para base separada
+# Obras não pagam infra UFSM
 total_obras_equip += sum(dados_obras.values())
-
 
 # 3. ANEXO I (Equipamentos) - Isentos de Taxa UFSM
 st.header("3. Anexo I - Material Permanente")
@@ -142,27 +143,25 @@ with st.expander("Equipamento Permanente (Isento de Taxa UFSM)", expanded=True):
 total_obras_equip += sum(item["Total"] for item in st.session_state.equip)
 
 # ==========================================
-# CÁLCULOS MATEMÁTICOS EXATOS DAS FUNDAÇÕES
+# CÁLCULOS MATEMÁTICOS FINAIS
 # ==========================================
 subtotal_projeto = total_base_infra + total_obras_equip
 
-# 1. Taxa de Infraestrutura da UFSM (Baseia-se apenas no total_base_infra)
+# Taxa Infra UFSM
 taxa_ufsm = 0.08 if total_base_infra > 200000 else 0.05
 valor_infra_ufsm = total_base_infra * taxa_ufsm
 
-# 2. Taxa de Despesas Operacionais (Fundação)
+# Taxa Operacional Fundação
 if fundacao_escolhida in ["FATEC", "FDMS"]:
-    # Cálculo Direto (10% sobre tudo)
     valor_taxa_fundacao = subtotal_projeto * 0.10
 else:
-    # Cálculo de Gross-up para FAURGS e FUNDEP (Divisão por 0.9)
+    # Gross-up FAURGS/FUNDEP
     valor_taxa_fundacao = ((subtotal_projeto + valor_infra_ufsm) / 0.9) * 0.10
 
-# 3. Total Final
 total_geral_final = subtotal_projeto + valor_infra_ufsm + valor_taxa_fundacao
 
 # ==========================================
-# BARRA LATERAL FIXA
+# RENDERIZAÇÃO DA BARRA LATERAL (Cálculos)
 # ==========================================
 with st.sidebar:
     st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/UFSM_bras%C3%A3o_e_logotipo.png/320px-UFSM_bras%C3%A3o_e_logotipo.png", width=150)
@@ -175,14 +174,14 @@ with st.sidebar:
     st.write(f"R$ {valor_infra_ufsm:,.2f}")
     
     tipo_calculo = "Direto" if fundacao_escolhida in ["FATEC", "FDMS"] else "Gross-up"
-    st.caption(f"Despesas Operacionais {fundacao_escolhida} (10% - {tipo_calculo})")
+    st.caption(f"Taxa da Fundação ({tipo_calculo})")
     st.write(f"R$ {valor_taxa_fundacao:,.2f}")
     
     st.divider()
     st.metric("TOTAL GERAL DO PROJETO", f"R$ {total_geral_final:,.2f}")
     st.divider()
     
-    if st.button("📥 GERAR ARQUIVO PARA O RAICHU", type="primary", use_container_width=True):
+    if st.button("📥 GERAR ARQUIVO", type="primary", use_container_width=True):
         wb = openpyxl.Workbook()
         wb.remove(wb.active)
 
@@ -202,11 +201,10 @@ with st.sidebar:
             else:
                 ws.append(["Nenhum item preenchido"])
 
-        # Aba oculta para o Raichu saber qual fundação foi usada
+        # Identificador para o Raichu
         ws_config = wb.create_sheet("Config_Raichu")
         ws_config.append(["Fundacao_Escolhida", fundacao_escolhida])
 
-        # Salvando as tabelas
         criar_aba_dinamica("Equipe_Vinc", st.session_state.eq_vinc)
         criar_aba_dinamica("Equipe_Nao_Vinc", st.session_state.eq_nao_vinc)
         criar_aba_fixa("Diarias", dados_diarias)
@@ -221,7 +219,7 @@ with st.sidebar:
         wb.save(output)
         output.seek(0)
         
-        st.success("Arquivo gerado com sucesso!")
+        st.success("Arquivo gerado! Envie-o para o preenchimento automático.")
         st.download_button(
             label="📥 Baixar Dados_Financeiros.xlsx",
             data=output,
