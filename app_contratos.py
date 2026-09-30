@@ -59,7 +59,7 @@ except Exception as e:
 
 
 # ==========================================
-# 3. MOTOR MULTI-CONTRATOS (DADOS AP e Licensiamento)
+# 3. MOTOR MULTI-CONTRATOS (DADOS AP e Licenciamento)
 # ==========================================
 def carregar_modelo_contrato(tipo_contrato):
     
@@ -394,7 +394,7 @@ st.sidebar.markdown("---")
 if modo_visao == "🌎 Consulta Pública":
     st.title("Rastreamento de Projetos")
     
-    tipo_contrato = st.selectbox("Selecione a modalidade do contrato:", ["Acordo de Parceria", "Licensiamento"])
+    tipo_contrato = st.selectbox("Selecione a modalidade do contrato:", ["Acordo de Parceria", "Licenciamento"])
     
     trad_et, txts, setr, cnxs, fases, func_aval = carregar_modelo_contrato(tipo_contrato)
     
