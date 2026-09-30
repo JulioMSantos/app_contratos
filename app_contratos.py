@@ -59,7 +59,7 @@ except Exception as e:
 
 
 # ==========================================
-# 3. MOTOR MULTI-CONTRATOS (DADOS AP e ACT)
+# 3. MOTOR MULTI-CONTRATOS (DADOS AP e Licensiamento)
 # ==========================================
 def carregar_modelo_contrato(tipo_contrato):
     
@@ -132,7 +132,7 @@ def carregar_modelo_contrato(tipo_contrato):
             elif id_etapa in ['N_FIM', 'N_A_SEGUIR']: return 100, 9
             else: return 50, 5
 
-    elif tipo_contrato == "ACT":
+    elif tipo_contrato == "Licenciamento":
         tradutor = {
             '1': 'L_NPV_1', '2': 'L_NPV_2', '3': 'L_NAP_1', '4': 'L_COM_1', '5': 'L_NAP_2', '6': 'L_PRA_1', '7': 'L_NAP_3',
             '8': 'L_NAP_4', '9': 'L_PRA_2', '10': 'L_NAP_5', '11': 'L_JUR_1', '12': 'L_NAP_6', '13': 'L_NAP_7', '14': 'L_CES_1',
@@ -394,7 +394,7 @@ st.sidebar.markdown("---")
 if modo_visao == "🌎 Consulta Pública":
     st.title("Rastreamento de Projetos")
     
-    tipo_contrato = st.selectbox("Selecione a modalidade do contrato:", ["Acordo de Parceria", "ACT"])
+    tipo_contrato = st.selectbox("Selecione a modalidade do contrato:", ["Acordo de Parceria", "Licensiamento"])
     
     trad_et, txts, setr, cnxs, fases, func_aval = carregar_modelo_contrato(tipo_contrato)
     
@@ -454,7 +454,7 @@ elif modo_visao == "⚙️ Visão Interna (Equipe NAP)":
             st.rerun()
             
         st.markdown("---")
-        tipo_contrato_nap = st.selectbox("Selecione o Dashboard Gerencial:", ["Acordo de Parceria", "ACT"], key="dropdown_interno")
+        tipo_contrato_nap = st.selectbox("Selecione o Dashboard Gerencial:", ["Acordo de Parceria", "Licenciamento"], key="dropdown_interno")
         
         trad_et, txts, setr, cnxs, fases, func_aval = carregar_modelo_contrato(tipo_contrato_nap)
         
